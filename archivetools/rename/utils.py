@@ -16,20 +16,23 @@ def _is_excluded(path: Path, ctx: CTX) -> bool:
     return any(parent in ctx.config.exclude for parent in chain([path], path.parents))
 
 
-def _is_empty(path: Path) -> bool:
-    return not any(path.iterdir())
+def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
+    for sub in path.iterdir():
+        if sub not in empty_dirs:
+            return False
+
+    empty_dirs.add(path)
+    return True
 
 
-def _is_dir(path: Path) -> bool:
-    return not path.suffix and path.is_dir()
-
-
-def check_valid_file(path: Path, ctx: CTX, checks: Check) -> Generator[INVALID_PATH_DATA, None, None]:
+def check_valid_file(
+    path: Path, ctx: CTX, checks: Check, empty_dirs: set[Path]
+) -> Generator[INVALID_PATH_DATA, None, None]:
     if _is_excluded(path, ctx):
         return
 
     if Check.EMPTY in checks:
-        if _is_dir(path) and _is_empty(path):
+        if path.is_dir() and _is_empty(path, empty_dirs):
             yield (Check.EMPTY, path)
 
     if Check.CHARACTERS in checks:
@@ -45,10 +48,12 @@ def check_valid_file(path: Path, ctx: CTX, checks: Check) -> Generator[INVALID_P
 
 def invalid_paths(path: Path, ctx: CTX, checks: Check, progress: Bar[Any]) -> Generator[INVALID_PATH_DATA, None, None]:
     if path.is_file():
-        yield from check_valid_file(path, ctx, checks)
+        yield from check_valid_file(path, ctx, checks, set())
 
     else:
+        empty_dirs = set()
+
         for root, dirs, files in progress(path.walk(top_down=False, on_error=print)):
             for file in files + dirs:
                 # split: avoid checking dirs empty
-                yield from check_valid_file(root / file, ctx, checks)
+                yield from check_valid_file(root / file, ctx, checks, empty_dirs)

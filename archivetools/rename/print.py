@@ -1,8 +1,7 @@
 from __future__ import annotations
+
 import os
 import re
-from pathlib import Path
-from typing import NamedTuple
 
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
@@ -86,7 +85,7 @@ class Grid:
                     yield Text.assemble("        ", " " * offset, repr_under)
 
                 case Check.EMPTY, path:
-                    error_repr = f"/{path.name}/∅ directory contains no files"
+                    error_repr = f"/{path.name} ~ directory contains no files"
                     path_max_width = self.console_width - 9 - len(error_repr)
 
                     root, _ = self.clamp(Text(str(path.parent)), path_max_width)
