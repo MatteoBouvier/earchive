@@ -1,4 +1,5 @@
 import sys
+from typing import Optional
 import typer
 from pathlib import Path
 from typing_extensions import Annotated
@@ -6,10 +7,10 @@ from typing_extensions import Annotated
 from archivetools.tree import Node
 from archivetools.compare import compare as compare_paths
 from archivetools.cli import show_tree
-from archivetools.rename import check_path, rename_path
+from archivetools.rename import check_path, rename_path, OS
 
 
-app = typer.Typer()
+app = typer.Typer(help="Collection of helper tools for digital archives management.")
 
 
 @app.command()
@@ -39,18 +40,22 @@ def compare(
 
 @app.command()
 def check(
-    path: Annotated[str, typer.Option("--path", "-p")] = ".",
-    config: Annotated[str, typer.Option("--config", "-c")] = "",
+    path: Annotated[Path, typer.Argument(exists=True, help="Path to check")] = Path("."),
+    os: Annotated[OS, typer.Option("--os", "-o", help="Target operating system")] = OS.windows,
+    config: Annotated[Optional[Path], typer.Option("--config", "-c", exists=True, help="Path to config file")] = None,
 ) -> None:
-    check_path(Path(path), config)
+    """Check for invalid paths on a target operating system."""
+    check_path(path, os, config)
 
 
 @app.command()
 def rename(
-    path: Annotated[str, typer.Option("--path", "-p")] = ".",
-    config: Annotated[str, typer.Option("--config", "-c")] = "",
+    path: Annotated[Path, typer.Argument(exists=True, help="Path to rename")] = Path("."),
+    os: Annotated[OS, typer.Option("--os", "-o", help="Target operating system")] = OS.windows,
+    config: Annotated[Optional[Path], typer.Option("--config", "-c", exists=True, help="Path to config file")] = None,
 ) -> None:
-    rename_path(Path(path), config)
+    """Rename paths to conform with rules on a target operating system."""
+    rename_path(path, os, config)
 
 
 app()

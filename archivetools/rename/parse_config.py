@@ -6,7 +6,9 @@ from typing import Any, Callable, TypedDict
 import unicodedata
 import dataclasses as dt
 
-from archivetools.names import OS
+
+class OS(StrEnum):
+    windows = auto()
 
 
 class SECTIONS(StrEnum):
@@ -21,7 +23,7 @@ class ParseError(Exception): ...
 
 @dt.dataclass(frozen=True, repr=False)
 class RegexPattern:
-    match: re.Pattern
+    match: re.Pattern[str]
     replacement: str
     accent_sensitive: bool
 
@@ -52,9 +54,9 @@ class Config:
     special_characters: SPECIAL_CHARACTERS_CONFIG
     rename: list[RegexPattern]
     exclude: list[Path]
-    invalid_characters: dict[OS, re.Pattern] = dt.field(init=False)
+    invalid_characters: dict[OS, re.Pattern[str]] = dt.field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "invalid_characters",
@@ -62,7 +64,7 @@ class Config:
         )
 
     def __repr__(self) -> str:
-        def repr_section(section_name: str):
+        def repr_section(section_name: str) -> str:
             section = getattr(self, section_name)
 
             if isinstance(section, dict):
@@ -80,15 +82,15 @@ class Config:
 
         raise ValueError
 
-    def get_invalid_characters(self, os: OS) -> re.Pattern:
+    def get_invalid_characters(self, os: OS) -> re.Pattern[str]:
         return self.invalid_characters[os]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[SECTIONS, Any]:
         return {
-            "windows": self.windows.copy(),
-            "special_characters": self.special_characters.copy(),
-            "rename": [dt.replace(p) for p in self.rename],
-            "exclude": self.exclude.copy(),
+            SECTIONS.windows: self.windows.copy(),
+            SECTIONS.special_characters: self.special_characters.copy(),
+            SECTIONS.rename: [dt.replace(p) for p in self.rename],
+            SECTIONS.exclude: self.exclude.copy(),
         }
 
 
@@ -100,7 +102,7 @@ DEFAULT_CONFIG = Config(
 )
 
 
-_SECTION_FACTORY: dict[SECTIONS, type[dict | list]] = {
+_SECTION_FACTORY: dict[SECTIONS, type[dict[Any, Any] | list[Any]]] = {
     SECTIONS.windows: dict,
     SECTIONS.special_characters: dict,
     SECTIONS.rename: list,
@@ -155,15 +157,15 @@ def parse_path(value: str, _: int) -> Path:
     return Path(value).resolve()
 
 
-def _dict_setter(section: dict, key: Any, value: Any) -> None:
+def _dict_setter(section: dict[Any, Any], key: Any, value: Any) -> None:
     section[key] = value
 
 
-def _list_setter(section: list, _: Any, value: Any) -> None:
+def _list_setter(section: list[Any], _: Any, value: Any) -> None:
     section.append(value)
 
 
-_SETTER_FUNCTION = Callable[[dict, Any, Any], None] | Callable[[list, Any, Any], None]
+_SETTER_FUNCTION = Callable[[dict[Any, Any], Any, Any], None] | Callable[[list[Any], Any, Any], None]
 
 _KEY_VALUE_PARSER: dict[SECTIONS, tuple[Callable[[str, str, int], tuple[Any, Any]], _SETTER_FUNCTION]] = {
     SECTIONS.windows: (parse_key_value, _dict_setter),
