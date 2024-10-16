@@ -28,7 +28,7 @@ def rename_path(
     dir: Path,
     os: OS,
     cfg: Path | None,
-    checks: Check = Check.CHARACTERS | Check.LENGTH,
+    checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
 ) -> None:
     dir = dir.resolve(strict=True)
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), os)
@@ -52,9 +52,13 @@ def rename_path(
         for file in files + dirs:
             rename_if_match(root / file, ctx)
 
-    # thrid pass : check for paths still too long
-    if Check.LENGTH in checks:
-        for invalid_data in invalid_paths(dir, ctx, checks=Check.LENGTH, progress=Bar()):
+    # thrid pass : check for paths still too long / remove empty directories
+    remaining_checks = checks ^ Check.CHARACTERS
+    if remaining_checks:
+        for invalid_data in invalid_paths(dir, ctx, checks=remaining_checks, progress=Bar()):
             match invalid_data:
+                case Check.EMPTY, path:
+                    path.rmdir()
+
                 case Check.LENGTH, path:
                     console.print(f"Path is too long ({len(str(path))}) : {path}", style=ERROR_STYLE)

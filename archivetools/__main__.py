@@ -97,7 +97,10 @@ def rename(
     config: Annotated[
         Optional[Path], typer.Option("--config", "-c", exists=True, dir_okay=False, help="Path to config file")
     ] = None,
-    # check_empty_dirs: Annotated[bool, typer.Option(help="")] = True,
+    check_empty_dirs: Annotated[
+        Optional[bool],
+        typer.Option("--check-empty-dirs/--no-check-empty-dirs", "-e/-E", help="Perform check for empty directories"),
+    ] = None,
     check_invalid_characters: Annotated[
         Optional[bool],
         typer.Option(
@@ -110,7 +113,7 @@ def rename(
     ] = None,
 ) -> None:
     """Rename paths to conform with rules on a target operating system."""
-    checks = _parse_checks(False, check_invalid_characters, check_path_length)
+    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length)
 
     rename_path(path, os, config, checks=checks)
 
