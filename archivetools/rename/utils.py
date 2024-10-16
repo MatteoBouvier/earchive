@@ -38,7 +38,7 @@ def check_valid_file(path: Path, ctx: CTX, checks: Check) -> Generator[INVALID_P
         if len(match):
             yield (Check.CHARACTERS, path, match)
 
-    if Check.LENGTH:
+    if Check.LENGTH in checks:
         if len(str(path)) > ctx.config.get_max_path_length(ctx.os):
             yield (Check.LENGTH, path)
 

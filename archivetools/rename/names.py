@@ -12,6 +12,7 @@ class CTX(NamedTuple):
 
 
 class Check(IntFlag):
+    NO_CHECK = 0
     EMPTY = auto()
     CHARACTERS = auto()
     LENGTH = auto()

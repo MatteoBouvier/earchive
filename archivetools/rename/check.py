@@ -8,11 +8,17 @@ from archivetools.rename.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
 from archivetools.rename.utils import invalid_paths, plural
 
 
-def check_path(dir: Path, os: OS, cfg: Path | None) -> None:
+def check_path(
+    dir: Path,
+    os: OS,
+    cfg: Path | None,
+    checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
+) -> None:
     dir = dir.resolve(strict=True)
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), os)
 
-    checks = Check.EMPTY | Check.CHARACTERS | Check.LENGTH
+    if not checks:
+        return
 
     counter = 0
     invalid_messages = Grid(ctx)
