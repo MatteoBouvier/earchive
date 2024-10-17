@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from archivetools.progress import Bar
-from archivetools.rename.names import CTX, OS, Check, OutputKind
+from archivetools.rename.names import CTX, FS, Check, OutputKind
 from archivetools.rename.parse_config import DEFAULT_CONFIG, parse_config
 from archivetools.rename.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
 from archivetools.rename.utils import invalid_paths, plural
@@ -10,7 +10,7 @@ from archivetools.rename.utils import invalid_paths, plural
 
 def check_path(
     dir: Path,
-    os: OS,
+    fs: FS,
     cfg: Path | None,
     checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
     output: OutputKind = OutputKind.cli,
@@ -19,7 +19,7 @@ def check_path(
         return
 
     dir = dir.resolve(strict=True)
-    ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), os)
+    ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
     counter = 0
     invalid_messages = Grid(ctx, kind=output)

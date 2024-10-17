@@ -36,13 +36,13 @@ def check_valid_file(
             yield (Check.EMPTY, path)
 
     if Check.CHARACTERS in checks:
-        match = list(ctx.config.get_invalid_characters(ctx.os).finditer(path.stem))
+        match = list(ctx.config.get_invalid_characters(ctx.fs).finditer(path.stem))
 
         if len(match):
             yield (Check.CHARACTERS, path, match)
 
     if Check.LENGTH in checks:
-        if len(str(path)) > ctx.config.get_max_path_length(ctx.os):
+        if len(str(path)) > ctx.config.get_max_path_length(ctx.fs):
             yield (Check.LENGTH, path)
 
 

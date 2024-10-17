@@ -1,15 +1,21 @@
-from typing import Optional
-import typer
 from pathlib import Path
+from typing import Optional
+
+import typer
 from typing_extensions import Annotated
+
+from archivetools.rename import FS, Check, OutputKind, check_path, rename_path
 
 # from archivetools.tree import Node
 # from archivetools.compare import compare as compare_paths
 # from archivetools.cli import show_tree
-from archivetools.rename import check_path, rename_path, OS, Check, OutputKind
+from archivetools.rename.doc import print_doc
 
-
-app = typer.Typer(help="Collection of helper tools for digital archives management.")
+app = typer.Typer(
+    help="Collection of helper tools for digital archives management.",
+    context_settings=dict(help_option_names=["--help", "-h"]),
+    rich_markup_mode="rich",
+)
 
 
 # @app.command()
@@ -38,11 +44,16 @@ app = typer.Typer(help="Collection of helper tools for digital archives manageme
 
 
 def _parse_checks(
-    check_empty_dirs: bool | None, check_invalid_characters: bool | None, check_path_length: bool | None
+    check_empty_dirs: bool | None,
+    check_invalid_characters: bool | None,
+    check_path_length: bool | None,
+    add_check_empty_dirs: bool,
 ) -> Check:
-    # no option selected (True OR False) : use default = all checks
+    # no option selected (True OR False) : use defaults
     if all(map(lambda c: c is None, (check_empty_dirs, check_invalid_characters, check_path_length))):
-        return Check.EMPTY | Check.CHARACTERS | Check.LENGTH
+        if add_check_empty_dirs:
+            return Check.EMPTY | Check.CHARACTERS | Check.LENGTH
+        return Check.CHARACTERS | Check.LENGTH
 
     # some options selected as True : use only selected checks
     if any(c for c in (check_empty_dirs, check_invalid_characters, check_path_length)):
@@ -63,60 +74,101 @@ def _parse_checks(
 @app.command()
 def check(
     path: Annotated[Path, typer.Argument(exists=True, help="Path to check")] = Path("."),
-    os: Annotated[OS, typer.Option("--os", "-o", help="Target operating system")] = OS.windows,
+    fs: Annotated[FS, typer.Option("--fs", "-f", help="Target file system")] = FS.windows,
     config: Annotated[
         Optional[Path], typer.Option("--config", "-c", exists=True, dir_okay=False, help="Path to config file")
     ] = None,
     check_empty_dirs: Annotated[
         Optional[bool],
-        typer.Option("--check-empty-dirs/--no-check-empty-dirs", "-e/-E", help="Perform check for empty directories"),
+        typer.Option(
+            "--check-empty-dirs/--no-check-empty-dirs",
+            "-e/-E",
+            help="Perform check for empty directories",
+            show_default=False,
+        ),
     ] = None,
+    add_check_empty_dirs: Annotated[
+        bool, typer.Option("--add-check-empty-dirs", "+e", help="Add check for empty directories to default checks")
+    ] = False,
     check_invalid_characters: Annotated[
         Optional[bool],
         typer.Option(
             "--check-invalid-characters/--no-check-invalid-characters",
             "-i/-I",
             help="Perform check for invalid characters",
+            show_default=False,
         ),
     ] = None,
     check_path_length: Annotated[
         Optional[bool],
-        typer.Option("--check-path-length/--no-check-path-length", "-l/-L", help="Perform check for path length"),
+        typer.Option(
+            "--check-path-length/--no-check-path-length",
+            "-l/-L",
+            help="Perform check for path length",
+            show_default=False,
+        ),
     ] = None,
     output: Annotated[
         OutputKind, typer.Option(help="Output format (cli = in command line | csv = as csv)")
     ] = OutputKind.cli,
+    doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
-    """Check for invalid paths on a target operating system."""
-    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length)
-    check_path(path, os, config, checks=checks, output=output)
+    r""":mag: [blue]Check[/blue] for invalid paths on a target file system."""
+    if doc:
+        print_doc("check")
+        raise typer.Exit()
+
+    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
+    check_path(path, fs, config, checks=checks, output=output)
 
 
 @app.command()
 def rename(
     path: Annotated[Path, typer.Argument(exists=True, writable=True, help="Path to rename")] = Path("."),
-    os: Annotated[OS, typer.Option("--os", "-o", help="Target operating system")] = OS.windows,
+    fs: Annotated[FS, typer.Option("--fs", "-f", help="Target file system")] = FS.windows,
     config: Annotated[
         Optional[Path], typer.Option("--config", "-c", exists=True, dir_okay=False, help="Path to config file")
     ] = None,
     check_empty_dirs: Annotated[
         Optional[bool],
-        typer.Option("--check-empty-dirs/--no-check-empty-dirs", "-e/-E", help="Perform check for empty directories"),
+        typer.Option(
+            "--check-empty-dirs/--no-check-empty-dirs",
+            "-e/-E",
+            help="Remove empty directories recursively",
+            show_default=False,
+        ),
     ] = None,
+    add_check_empty_dirs: Annotated[
+        bool, typer.Option("--add-check-empty-dirs", "+e", help="Add check for empty directories to default checks")
+    ] = False,
     check_invalid_characters: Annotated[
         Optional[bool],
         typer.Option(
-            "--check-invalid-characters/--no-check-invalid-characters", "-i/-I", help="Replace invalid characters"
+            "--check-invalid-characters/--no-check-invalid-characters",
+            "-i/-I",
+            help="Replace invalid characters",
+            show_default=False,
         ),
     ] = None,
     check_path_length: Annotated[
         Optional[bool],
-        typer.Option("--check-path-length/--no-check-path-length", "-l/-L", help="Perform check for path length"),
+        typer.Option(
+            "--check-path-length/--no-check-path-length",
+            "-l/-L",
+            help="Perform check for path length",
+            show_default=False,
+        ),
     ] = None,
+    # TODO: output formats
+    doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
-    """Rename paths to conform with rules on a target operating system."""
-    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length)
-    rename_path(path, os, config, checks=checks)
+    r""":fountain_pen:  [blue]Rename[/blue] paths to conform with rules on a target operating system."""
+    if doc:
+        print_doc("rename")
+        raise typer.Exit()
+
+    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
+    rename_path(path, fs, config, checks=checks)
 
 
 app()

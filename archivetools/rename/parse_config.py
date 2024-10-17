@@ -7,7 +7,7 @@ import unicodedata
 import dataclasses as dt
 
 
-class OS(StrEnum):
+class FS(StrEnum):
     windows = auto()
 
 
@@ -38,7 +38,7 @@ class RegexPattern:
         return re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFD", string))
 
 
-class OS_CONFIG(TypedDict):
+class FS_CONFIG(TypedDict):
     special_characters: str
     max_path_length: int
 
@@ -50,17 +50,17 @@ class SPECIAL_CHARACTERS_CONFIG(TypedDict):
 
 @dt.dataclass(frozen=True, repr=False)
 class Config:
-    windows: OS_CONFIG
+    windows: FS_CONFIG
     special_characters: SPECIAL_CHARACTERS_CONFIG
     rename: list[RegexPattern]
     exclude: list[Path]
-    invalid_characters: dict[OS, re.Pattern[str]] = dt.field(init=False)
+    invalid_characters: dict[FS, re.Pattern[str]] = dt.field(init=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
             "invalid_characters",
-            {OS.windows: re.compile("[" + self.windows["special_characters"] + self.special_characters["extra"] + "]")},
+            {FS.windows: re.compile("[" + self.windows["special_characters"] + self.special_characters["extra"] + "]")},
         )
 
     def __repr__(self) -> str:
@@ -76,13 +76,13 @@ class Config:
 
         return f"== Config ==\n{'\n\n'.join(map(repr_section, self.__dict__))}"
 
-    def get_max_path_length(self, os: OS) -> int:
-        if os is OS.windows:
+    def get_max_path_length(self, fs: FS) -> int:
+        if fs is FS.windows:
             return self.windows["max_path_length"]
 
         raise ValueError
 
-    def get_invalid_characters(self, os: OS) -> re.Pattern[str]:
+    def get_invalid_characters(self, os: FS) -> re.Pattern[str]:
         return self.invalid_characters[os]
 
     def to_dict(self) -> dict[SECTIONS, Any]:

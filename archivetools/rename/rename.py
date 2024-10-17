@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 from archivetools.progress import Bar
-from archivetools.rename.names import CTX, OS, Check
+from archivetools.rename.names import CTX, FS, Check
 from archivetools.rename.parse_config import DEFAULT_CONFIG, parse_config
 from archivetools.rename.utils import invalid_paths
 from archivetools.rename.print import console, ERROR_STYLE
@@ -23,15 +23,14 @@ def rename_if_match(path: Path, ctx: CTX) -> None:
         path.rename(path.parent / new_path)
 
 
-# TODO: delete  empty dirs ?
 def rename_path(
     dir: Path,
-    os: OS,
+    fs: FS,
     cfg: Path | None,
     checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
 ) -> None:
     dir = dir.resolve(strict=True)
-    ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), os)
+    ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
     # First pass : remove special characters
     if Check.CHARACTERS in checks:
@@ -41,7 +40,7 @@ def rename_path(
                     path.rename(
                         path.parent
                         / re.sub(
-                            ctx.config.get_invalid_characters(os),
+                            ctx.config.get_invalid_characters(fs),
                             ctx.config.special_characters["replacement"],
                             path.stem,
                         )

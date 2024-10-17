@@ -3,7 +3,7 @@ from enum import StrEnum, IntFlag, auto
 from pathlib import Path
 from typing import Literal, NamedTuple
 
-from archivetools.rename.parse_config import OS, Config
+from archivetools.rename.parse_config import FS, Config
 
 
 class OutputKind(StrEnum):
@@ -13,7 +13,7 @@ class OutputKind(StrEnum):
 
 class CTX(NamedTuple):
     config: Config
-    os: OS
+    fs: FS
 
 
 class Check(IntFlag):

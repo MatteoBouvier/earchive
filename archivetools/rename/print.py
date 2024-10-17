@@ -76,7 +76,7 @@ class Grid:
                     yield Text.assemble("        ", " " * offset, repr_under)
 
                 case Check.LENGTH, path:
-                    max_path_len = self.ctx.config.get_max_path_length(self.ctx.os)
+                    max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
                     repr_above, repr_under = self._repr_too_long(path.name, len(str(path)), max_path_len)
 
                     path_max_width = self.console_width - 9 - len(repr_under)
@@ -97,7 +97,7 @@ class Grid:
                     raise RuntimeError("Found invalid kind")
 
     def _csv_repr(self) -> RenderResult:
-        max_path_len = self.ctx.config.get_max_path_length(self.ctx.os)
+        max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
         yield "Error,Description,Reason,File_path,File_name"
 
         for row in self.rows:
