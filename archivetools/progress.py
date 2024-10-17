@@ -49,11 +49,11 @@ class Bar[T]:
 
     def update(self, s: str) -> None:
         len_s = len(s)
-        sys.stdout.write("\r" + s + (" " * max(self.last_len - len_s, 0)))
-        sys.stdout.flush()
+        sys.stderr.write("\r" + s + (" " * max(self.last_len - len_s, 0)))
+        sys.stderr.flush()
 
         self.last_len = len_s
 
     def clear(self) -> None:
-        sys.stdout.write("\r" + (" " * self.last_len) + "\r")
-        sys.stdout.flush()
+        sys.stderr.write("\r" + (" " * self.last_len) + "\r")
+        sys.stderr.flush()

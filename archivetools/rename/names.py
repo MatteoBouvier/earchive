@@ -1,9 +1,14 @@
 import re
-from enum import IntFlag, auto
+from enum import StrEnum, IntFlag, auto
 from pathlib import Path
 from typing import Literal, NamedTuple
 
 from archivetools.rename.parse_config import OS, Config
+
+
+class OutputKind(StrEnum):
+    cli = auto()
+    csv = auto()
 
 
 class CTX(NamedTuple):
