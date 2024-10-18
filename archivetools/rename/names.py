@@ -7,6 +7,7 @@ from archivetools.rename.parse_config import FS, Config, RegexPattern
 
 
 class OutputKind(StrEnum):
+    silent = auto()
     cli = auto()
     csv = auto()
 

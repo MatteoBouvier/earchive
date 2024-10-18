@@ -108,9 +108,7 @@ def check(
             show_default=False,
         ),
     ] = None,
-    output: Annotated[
-        OutputKind, typer.Option(help="Output format (cli = in command line | csv = as csv)")
-    ] = OutputKind.cli,
+    output: Annotated[OutputKind, typer.Option(help="Output format")] = OutputKind.cli,
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
     r""":mag: [blue]Check[/blue] for invalid paths on a target file system."""
@@ -119,7 +117,10 @@ def check(
         raise typer.Exit()
 
     checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
-    check_path(path, fs, config, checks=checks, output=output)
+    nb_issues = check_path(path, fs, config, checks=checks, output=output)
+
+    if nb_issues:
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -160,9 +161,7 @@ def rename(
         ),
     ] = None,
     # TODO: add to docs
-    output: Annotated[
-        Optional[OutputKind], typer.Option(help="Output format (cli = in command line | csv = as csv)")
-    ] = None,
+    output: Annotated[OutputKind, typer.Option(help="Output format")] = OutputKind.cli,
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
     r""":fountain_pen:  [blue]Rename[/blue] paths to conform with rules on a target operating system."""
@@ -171,7 +170,10 @@ def rename(
         raise typer.Exit()
 
     checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
-    rename_path(path, fs, config, checks=checks, output=output)
+    nb_issues = rename_path(path, fs, config, checks=checks, output=output)
+
+    if nb_issues:
+        typer.Exit(code=2)
 
 
 app()

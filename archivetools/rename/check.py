@@ -14,9 +14,9 @@ def check_path(
     cfg: Path | None,
     checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
     output: OutputKind = OutputKind.cli,
-) -> None:
+) -> int:
     if not checks:
-        return
+        return 0
 
     dir = dir.resolve(strict=True)
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
@@ -35,3 +35,8 @@ def check_path(
             f"\nFound {counter} invalid path{plural(counter)} out of {progress.counter}",
             style=ERROR_STYLE if counter else SUCCESS_STYLE,
         )
+
+    elif output == OutputKind.silent:
+        console.print(counter)
+
+    return counter

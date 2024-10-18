@@ -187,8 +187,6 @@ class Grid:
         elif self.kind == OutputKind.csv:
             yield from self._csv_repr()
 
-        else:
-            raise ValueError("Invalid kind")
-
     def add_row(self, row: PathDiagnostic) -> None:
-        self.rows.append(row)
+        if self.kind != OutputKind.silent:
+            self.rows.append(row)

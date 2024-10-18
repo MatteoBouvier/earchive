@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator
 
@@ -6,7 +7,12 @@ from archivetools.progress import Bar
 from archivetools.rename.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
 from archivetools.rename.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
 from archivetools.rename.print import ERROR_STYLE, Grid, console
-from archivetools.rename.utils import invalid_paths
+from archivetools.rename.utils import invalid_paths, plural
+
+
+@dataclass
+class Counter:
+    value: int = 0
 
 
 def _rename_if_match(path: Path, ctx: CTX) -> PathDiagnostic | None:
@@ -24,7 +30,7 @@ def _rename_if_match(path: Path, ctx: CTX) -> PathDiagnostic | None:
         return PathDiagnostic(Action.RENAME, path, patterns=matched_patterns, new_path=new_path)
 
 
-def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check) -> Generator[PathDiagnostic, None, None]:
+def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -> Generator[PathDiagnostic, None, None]:
     # First pass : remove special characters
     if Check.CHARACTERS in checks:
         for invalid_data in invalid_paths(dir, ctx, checks=Check.CHARACTERS, progress=Bar()):
@@ -60,6 +66,7 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check) -> Generator[PathDi
 
                 case PathDiagnostic(Check.LENGTH, path):
                     console.print(f"Path is too long ({len(str(path))}) : {path}", style=ERROR_STYLE)
+                    counter.value += 1
                     yield PathDiagnostic(Check.LENGTH, path)
 
 
@@ -69,20 +76,23 @@ def rename_path(
     fs: FS,
     cfg: Path | None,
     checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
-    output: OutputKind | None = None,
-) -> None:
+    output: OutputKind = OutputKind.silent,
+) -> int:
     dir = dir.resolve(strict=True)
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
-    if output is not None:
-        messages = Grid(ctx, kind=output, mode="rename")
+    messages = Grid(ctx, kind=output, mode="rename")
+    counter = Counter()
 
-        for message in _rename_core(dir, fs, ctx, checks):
-            messages.add_row(message)
+    for message in _rename_core(dir, fs, ctx, checks, counter):
+        messages.add_row(message)
 
-        console.print(messages, no_wrap=True)
+    console.print(messages, no_wrap=True)
 
-    else:
-        all(_rename_core(dir, fs, ctx, checks))
+    if output == OutputKind.cli:
+        console.print(f"\n{counter.value} issue{plural(counter.value)} could not be resolved.")
 
-    # TODO: print # remaining errors
+    elif output == OutputKind.silent:
+        console.print(counter.value)
+
+    return counter.value
