@@ -1,9 +1,9 @@
 import re
-from enum import StrEnum, IntFlag, auto
+from enum import Enum, IntFlag, StrEnum, auto
 from pathlib import Path
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
-from archivetools.rename.parse_config import FS, Config
+from archivetools.rename.parse_config import FS, Config, RegexPattern
 
 
 class OutputKind(StrEnum):
@@ -23,7 +23,16 @@ class Check(IntFlag):
     LENGTH = auto()
 
 
-INVALID_PATH_CHR = tuple[Literal[Check.CHARACTERS], Path, list[re.Match[str]]]
-INVALID_PATH_LEN = tuple[Literal[Check.LENGTH], Path]
-INVALID_PATH_EMPTY = tuple[Literal[Check.EMPTY], Path]
-INVALID_PATH_DATA = INVALID_PATH_CHR | INVALID_PATH_LEN | INVALID_PATH_EMPTY
+class Action(Enum):
+    RENAME = auto()
+
+
+type Diagnostic = Check | Action
+
+
+class PathDiagnostic(NamedTuple):
+    kind: Diagnostic
+    path: Path
+    matches: list[re.Match[str]] | None = None
+    patterns: list[tuple[RegexPattern, str]] | None = None
+    new_path: Path | None = None

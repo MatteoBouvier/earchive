@@ -159,7 +159,10 @@ def rename(
             show_default=False,
         ),
     ] = None,
-    # TODO: output formats
+    # TODO: add to docs
+    output: Annotated[
+        Optional[OutputKind], typer.Option(help="Output format (cli = in command line | csv = as csv)")
+    ] = None,
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
     r""":fountain_pen:  [blue]Rename[/blue] paths to conform with rules on a target operating system."""
@@ -168,7 +171,7 @@ def rename(
         raise typer.Exit()
 
     checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
-    rename_path(path, fs, config, checks=checks)
+    rename_path(path, fs, config, checks=checks, output=output)
 
 
 app()

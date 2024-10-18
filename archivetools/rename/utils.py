@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Generator
 
 from archivetools.progress import Bar
-from archivetools.rename.names import CTX, INVALID_PATH_DATA, Check
+from archivetools.rename.names import CTX, Check, PathDiagnostic
 
 
 def plural(value: int) -> str:
@@ -27,26 +27,26 @@ def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
 
 def check_valid_file(
     path: Path, ctx: CTX, checks: Check, empty_dirs: set[Path]
-) -> Generator[INVALID_PATH_DATA, None, None]:
+) -> Generator[PathDiagnostic, None, None]:
     if _is_excluded(path, ctx):
         return
 
     if Check.EMPTY in checks:
         if path.is_dir() and _is_empty(path, empty_dirs):
-            yield (Check.EMPTY, path)
+            yield PathDiagnostic(Check.EMPTY, path)
 
     if Check.CHARACTERS in checks:
         match = list(ctx.config.get_invalid_characters(ctx.fs).finditer(path.stem))
 
         if len(match):
-            yield (Check.CHARACTERS, path, match)
+            yield PathDiagnostic(Check.CHARACTERS, path, match)
 
     if Check.LENGTH in checks:
         if len(str(path)) > ctx.config.get_max_path_length(ctx.fs):
-            yield (Check.LENGTH, path)
+            yield PathDiagnostic(Check.LENGTH, path)
 
 
-def invalid_paths(path: Path, ctx: CTX, checks: Check, progress: Bar[Any]) -> Generator[INVALID_PATH_DATA, None, None]:
+def invalid_paths(path: Path, ctx: CTX, checks: Check, progress: Bar[Any]) -> Generator[PathDiagnostic, None, None]:
     if path.is_file():
         yield from check_valid_file(path, ctx, checks, set())
 

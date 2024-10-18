@@ -22,7 +22,7 @@ def check_path(
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
     counter = 0
-    invalid_messages = Grid(ctx, kind=output)
+    invalid_messages = Grid(ctx, kind=output, mode="check")
 
     progress: Bar[Any] = Bar()
     for counter, invalid_data in enumerate(invalid_paths(dir, ctx, checks=checks, progress=progress), start=1):
