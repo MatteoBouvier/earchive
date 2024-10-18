@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Generator
 
 from archivetools.progress import Bar
-from archivetools.rename.names import CTX, Check, PathDiagnostic
+from archivetools.check.names import CTX, Check, PathDiagnostic
 
 
 def plural(value: int) -> str:

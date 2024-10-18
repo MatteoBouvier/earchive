@@ -1,13 +1,13 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
+from archivetools.check.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
+from archivetools.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
+from archivetools.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
+from archivetools.check.utils import invalid_paths, plural
 from archivetools.progress import Bar
-from archivetools.rename.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
-from archivetools.rename.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
-from archivetools.rename.print import ERROR_STYLE, Grid, console
-from archivetools.rename.utils import invalid_paths, plural
 
 
 @dataclass
@@ -46,7 +46,6 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
                     )
                     yield PathDiagnostic(Check.CHARACTERS, path, matches=matches, new_path=new_path)
 
-    # TODO: add to docs that if all checks are disabled, only renaming is done
     # second pass : replace patterns defined in the `cfg` file
     for root, dirs, files in dir.walk(top_down=False, on_error=print):
         for file in files + dirs:
@@ -70,29 +69,55 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
                     yield PathDiagnostic(Check.LENGTH, path)
 
 
-# TODO: merge with check command as --fix option
-def rename_path(
+def check_path(
     dir: Path,
     fs: FS,
     cfg: Path | None,
-    checks: Check = Check.EMPTY | Check.CHARACTERS | Check.LENGTH,
-    output: OutputKind = OutputKind.silent,
+    checks: Check = Check.CHARACTERS | Check.LENGTH,
+    output: OutputKind = OutputKind.cli,
+    fix: bool = False,
 ) -> int:
+    if not checks and not fix:
+        return 0
+
     dir = dir.resolve(strict=True)
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
-    messages = Grid(ctx, kind=output, mode="rename")
     counter = Counter()
+    progress: Bar[Any] = Bar()
+    messages = Grid(ctx, kind=output, mode="rename" if fix else "check")
 
-    for message in _rename_core(dir, fs, ctx, checks, counter):
-        messages.add_row(message)
+    if fix:
+        for message in _rename_core(dir, fs, ctx, checks, counter):
+            messages.add_row(message)
+
+    else:
+        for invalid_data in invalid_paths(dir, ctx, checks=checks, progress=progress):
+            messages.add_row(invalid_data)
+            counter.value += 1
 
     console.print(messages, no_wrap=True)
 
-    if output == OutputKind.cli:
-        console.print(f"\n{counter.value} issue{plural(counter.value)} could not be resolved.")
+    if fix:
+        if output == OutputKind.cli:
+            if counter.value:
+                console.print(
+                    f"\n{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE
+                )
+            else:
+                console.print("\nAll invalid paths were fixed.", style=SUCCESS_STYLE)
 
-    elif output == OutputKind.silent:
-        console.print(counter.value)
+        elif output == OutputKind.silent:
+            console.print(counter.value)
+
+    else:
+        if output == OutputKind.cli:
+            console.print(
+                f"\nFound {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
+                style=ERROR_STYLE if counter.value else SUCCESS_STYLE,
+            )
+
+        elif output == OutputKind.silent:
+            console.print(counter.value)
 
     return counter.value

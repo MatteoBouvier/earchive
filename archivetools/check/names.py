@@ -3,7 +3,7 @@ from enum import Enum, IntFlag, StrEnum, auto
 from pathlib import Path
 from typing import NamedTuple
 
-from archivetools.rename.parse_config import FS, Config, RegexPattern
+from archivetools.check.parse_config import FS, Config, RegexPattern
 
 
 class OutputKind(StrEnum):

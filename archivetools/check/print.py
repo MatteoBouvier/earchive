@@ -9,8 +9,8 @@ from typing import Literal
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.text import Text
 
-from archivetools.rename.names import CTX, Action, Check, OutputKind, PathDiagnostic
-from archivetools.rename.parse_config import RegexPattern
+from archivetools.check.names import CTX, Action, Check, OutputKind, PathDiagnostic
+from archivetools.check.parse_config import RegexPattern
 
 console = Console(force_terminal=True, legacy_windows=False)
 
