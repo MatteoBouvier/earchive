@@ -10,6 +10,7 @@ from archivetools.cli import show_tree
 from archivetools.compare import compare as compare_paths
 from archivetools.doc import print_doc
 from archivetools.tree import Node
+from archivetools.copy import copy_structure
 
 app = typer.Typer(
     help="Collection of helper tools for digital archives management.",
@@ -122,6 +123,26 @@ def check(
 
     if nb_issues:
         raise typer.Exit(code=2 if fix else 1)
+
+
+@app.command()
+def copy(
+    src: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=False, readable=True, resolve_path=True, help="Source directory to copy"),
+    ],
+    dst: Annotated[
+        Path,
+        typer.Argument(
+            file_okay=False, writable=True, resolve_path=True, help="Destination for storing the directory structure"
+        ),
+    ],
+) -> None:
+    r""":books: [blue]Copy[/blue] a directory structure (file contents are not copied)."""
+    if not dst.exists:
+        dst.mkdir(parents=True)
+
+    copy_structure(src, dst)
 
 
 app()
