@@ -1,4 +1,4 @@
-from archivetools.tree import Node
+from earchive.tree import Node
 
 
 def test_creation(path, nodes) -> None:

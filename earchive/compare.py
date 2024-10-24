@@ -2,8 +2,8 @@ import sys
 from rich import print
 from rich.tree import Tree
 
-from archivetools.tree import Node
-from archivetools.cli import node_link
+from earchive.tree import Node
+from earchive.cli import node_link
 
 
 def _index(node: Node, others: list[Node]) -> int:

@@ -46,13 +46,13 @@ B, H, P = _SectionBody, _SectionHeader, _SectionParagraph
 
 
 check_doc = Text.assemble(
-    Text("ArchiveTools check\n\n"),
+    Text("EArchive check\n\n"),
     B(H("name"), P("check - check for invalid file paths on a target file system and fix them")),
     B(
         H("synopsis"),
-        P("archivetools check -h | --help"),
-        P("archivetools check --doc"),
-        P(r"""archivetools check [<filename>]
+        P("earchive check -h | --help"),
+        P("earchive check --doc"),
+        P(r"""earchive check [<filename>]
                            [-f | --fs <file system>]
                            [-c | --config <path>]
                            [--output <format>]
@@ -110,13 +110,13 @@ check_doc = Text.assemble(
             "\n\t\tCheck for path length exceeding the file system's limite. Active by default.\n",
         ),
         P(
-            "By default, checks for invalid characters and path lenghts are performed, as if using `archivetools check -i -l` options.",
-            "-e, -i and -l options individually select checks to be run, i.e. `archivetools check -e` will ONLY run checks for empty directories.",
+            "By default, checks for invalid characters and path lenghts are performed, as if using `earchive check -i -l` options.",
+            "-e, -i and -l options individually select checks to be run, i.e. `earchive check -e` will ONLY run checks for empty directories.",
             "Individual checks may be disabled with the corresponding capital letter options -E (--no-check-empty-dirs), -I (--no-check-invalid-characters) and -L (--no-check-path-length).",
         ),
         P(
             "For convenience, the +e option can be used to add empty directories checks to the default -i and -l checks."
-            "This is equivalent to `archivetools check -i -l -e`.",
+            "This is equivalent to `earchive check -i -l -e`.",
         ),
     ),
     B(

@@ -3,7 +3,7 @@ from rich.text import Text
 from rich.tree import Tree
 from rich.markup import escape
 
-from archivetools.tree import Node
+from earchive.tree import Node
 
 FIlE_ICON = "📄"
 FOLDER_ICON = "📂"

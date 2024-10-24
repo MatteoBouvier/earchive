@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Generator
 
 import pytest
-from archivetools.tree import Node
+from earchive.tree import Node
 
 type TreeType = dict[str, TreeType | None]
 

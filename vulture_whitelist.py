@@ -1,2 +1,2 @@
-show  # unused function (archivetools/__main__.py:14)
-empty  # unused function (archivetools/__main__.py:19)
+show  # unused function (earchive/__main__.py:14)
+empty  # unused function (earchive/__main__.py:19)

@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "archivetools"
+name = "earchive"
 version = "0.1.0"
-description = ""
-authors = ["MatteoBouvierVidium <m.bouvier@vidium-solutions.com>"]
+description = "Set of tools for electronic archivists"
+authors = ["Matteo Bouvier <matteo.bouvier@hotmail.fr>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -23,7 +23,7 @@ ruff = { version = "^0.6.9", optional=true }
 dev = ["pytest", "vulture", "pre-commit", "mypy", "scalene", "ruff"]
 
 [tool.poetry.scripts]
-archivetools = "archivetools.main:main"
+earchive = "earchive.main:main"
 
 [build-system]
 requires = ["poetry-core"]
@@ -37,7 +37,7 @@ exclude = [
 
 [tool.vulture]
 paths = [
-    "archivetools", 
+    "earchive", 
     "vulture_whitelist.py",
 ]
 

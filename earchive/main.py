@@ -5,12 +5,12 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from archivetools.check import FS, Check, OutputKind, check_path
-from archivetools.cli import show_tree
-from archivetools.compare import compare as compare_paths
-from archivetools.doc import print_doc
-from archivetools.tree import Node
-from archivetools.copy import copy_structure
+from earchive.check import FS, Check, OutputKind, check_path
+from earchive.cli import show_tree
+from earchive.compare import compare as compare_paths
+from earchive.doc import print_doc
+from earchive.tree import Node
+from earchive.copy import copy_structure
 
 app = typer.Typer(
     help="Collection of helper tools for digital archives management.",

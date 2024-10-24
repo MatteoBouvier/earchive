@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
 
-from archivetools.check.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
-from archivetools.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
-from archivetools.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
-from archivetools.check.utils import invalid_paths, plural
-from archivetools.progress import Bar
+from earchive.check.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
+from earchive.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
+from earchive.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
+from earchive.check.utils import invalid_paths, plural
+from earchive.progress import Bar
 
 
 @dataclass

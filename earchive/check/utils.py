@@ -2,8 +2,8 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Generator
 
-from archivetools.progress import Bar
-from archivetools.check.names import CTX, Check, PathDiagnostic
+from earchive.progress import Bar
+from earchive.check.names import CTX, Check, PathDiagnostic
 
 
 def plural(value: int) -> str:
