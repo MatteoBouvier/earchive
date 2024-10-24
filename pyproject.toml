@@ -22,6 +22,9 @@ ruff = { version = "^0.6.9", optional=true }
 [tool.poetry.extras]
 dev = ["pytest", "vulture", "pre-commit", "mypy", "scalene", "ruff"]
 
+[tool.poetry.scripts]
+archivetools = "archivetools.main:main"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
