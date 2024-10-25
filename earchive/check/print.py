@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 import re
-from itertools import chain, batched
+import shutil
+from itertools import batched, chain
 from pathlib import Path
 from typing import Literal
 
@@ -90,7 +90,7 @@ class Grid:
         self.mode = mode
 
         self.rows: list[PathDiagnostic] = []
-        self.console_width = os.get_terminal_size().columns
+        self.console_width = shutil.get_terminal_size().columns
 
     def _clamp(self, txt: Text, max_width: int) -> tuple[Text, int]:
         if len(txt) > max_width:
