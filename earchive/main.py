@@ -16,6 +16,7 @@ app = typer.Typer(
     help="Collection of helper tools for digital archives management.",
     context_settings=dict(help_option_names=["--help", "-h"]),
     rich_markup_mode="rich",
+    pretty_exceptions_enable=False,
 )
 
 

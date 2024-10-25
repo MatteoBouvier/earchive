@@ -90,7 +90,7 @@ class Grid:
         self.mode = mode
 
         self.rows: list[PathDiagnostic] = []
-        self.console_width = int(os.popen("stty size", "r").read().split()[1])
+        self.console_width = os.get_terminal_size().columns
 
     def _clamp(self, txt: Text, max_width: int) -> tuple[Text, int]:
         if len(txt) > max_width:

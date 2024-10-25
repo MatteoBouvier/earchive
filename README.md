@@ -38,3 +38,7 @@ Clone the source code :
 git clone git@github.com:MatteoBouvier/earchive.git
 python -m earchive --help
 ```
+
+
+--> NTFS : 65535
+--> NTFS(Windows) : 255
