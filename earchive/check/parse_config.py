@@ -57,10 +57,11 @@ class Config:
     invalid_characters: dict[FS, re.Pattern[str]] = dt.field(init=False)
 
     def __post_init__(self) -> None:
+        extras = self.special_characters["extra"].replace("-", "\\-")
         object.__setattr__(
             self,
             "invalid_characters",
-            {FS.windows: re.compile("[" + self.windows["special_characters"] + self.special_characters["extra"] + "]")},
+            {FS.windows: re.compile("[" + self.windows["special_characters"] + extras + "]")},
         )
 
     def __repr__(self) -> str:
@@ -114,7 +115,7 @@ def parse_value(string: str, _: int) -> str | int:
     try:
         return int(string)
     except ValueError:
-        return string.strip()
+        return string.strip().strip("\"'")
 
 
 def parse_key(string: str, _: int) -> str:
@@ -182,11 +183,15 @@ def parse_config(path: Path) -> Config:
     config = {}
     section: SECTIONS | None = None
 
+    print("hi")
+
     with open(path, "r") as config_file:
         for line_nb, line in enumerate(config_file, start=1):
             line = line.strip()
             if line == "":
                 continue
+
+            print(line)
 
             match re.split(r"[\[\]=]", line):
                 case ["", str(section_str), ""]:
@@ -194,6 +199,7 @@ def parse_config(path: Path) -> Config:
                     if section_str not in SECTIONS:
                         raise ParseError(f"Invalid section name '{section_str}'")
 
+                    print("section")
                     section = SECTIONS(section_str)
                     config[section] = _SECTION_FACTORY[section]()
 
@@ -201,6 +207,7 @@ def parse_config(path: Path) -> Config:
                     if section is None:
                         raise ParseError(f"Found values outside a section at line {line_nb}")
 
+                    print("simple value")
                     parse_, set_ = _VALUE_PARSER[section]
                     set_(config[section], None, parse_(p, line_nb))
 
@@ -208,7 +215,9 @@ def parse_config(path: Path) -> Config:
                     if section is None:
                         raise ParseError(f"Found values outside a section at line {line_nb}")
 
+                    print("key=value", key, value)
                     parse_, set_ = _KEY_VALUE_PARSER[section]
+                    print("parsed", *parse_(key, value, line_nb))
                     set_(config[section], *parse_(key, value, line_nb))
 
                 case _:
