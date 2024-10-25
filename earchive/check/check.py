@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
 
-from earchive.check.names import CTX, FS, Action, Check, OutputKind, PathDiagnostic
+from earchive.check.names import CTX, FS, Action, Check, CheckRepr, OutputKind, PathDiagnostic
 from earchive.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
 from earchive.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
 from earchive.check.utils import invalid_paths, plural
@@ -102,20 +102,22 @@ def check_path(
 
     if fix:
         if output == OutputKind.cli:
+            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in checks])}")
             if counter.value:
                 console.print(
-                    f"\n{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE
+                    f"{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE
                 )
             else:
-                console.print("\nAll invalid paths were fixed.", style=SUCCESS_STYLE)
+                console.print("All invalid paths were fixed.", style=SUCCESS_STYLE)
 
         elif output == OutputKind.silent:
             console.print(counter.value)
 
     else:
         if output == OutputKind.cli:
+            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in checks])}")
             console.print(
-                f"\nFound {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
+                f"Found {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
                 style=ERROR_STYLE if counter.value else SUCCESS_STYLE,
             )
 

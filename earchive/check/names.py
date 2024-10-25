@@ -24,6 +24,9 @@ class Check(IntFlag):
     LENGTH = auto()
 
 
+CheckRepr = {Check.EMPTY: "Empty directories", Check.CHARACTERS: "Invalid characters", Check.LENGTH: "Path length"}
+
+
 class Action(Enum):
     RENAME = auto()
 
