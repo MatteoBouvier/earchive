@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from itertools import chain
+from itertools import chain, batched
 from pathlib import Path
 from typing import Literal
 
@@ -109,36 +109,37 @@ class Grid:
             Action.RENAME: "RENAME  ",
         }
 
-        for row in self.rows:
-            match row:
-                case PathDiagnostic(Check.CHARACTERS, path, matches=list(matches), new_path=new_path):
-                    repr_above, repr_under_list = _repr_matches(path.name, matches, new_path)
+        for row_group in batched(self.rows, n=100):
+            for row in row_group:
+                match row:
+                    case PathDiagnostic(Check.CHARACTERS, path, matches=list(matches), new_path=new_path):
+                        repr_above, repr_under_list = _repr_matches(path.name, matches, new_path)
 
-                case PathDiagnostic(Action.RENAME, path, patterns=list(patterns), new_path=Path() as new_path):
-                    repr_above, repr_under_list = _repr_renames(path.name, patterns, new_path)
+                    case PathDiagnostic(Action.RENAME, path, patterns=list(patterns), new_path=Path() as new_path):
+                        repr_above, repr_under_list = _repr_renames(path.name, patterns, new_path)
 
-                case PathDiagnostic(Check.LENGTH, path):
-                    max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
-                    repr_above, repr_under_list = _repr_too_long(path.name, len(str(path)), max_path_len)
+                    case PathDiagnostic(Check.LENGTH, path):
+                        max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
+                        repr_above, repr_under_list = _repr_too_long(path.name, len(str(path)), max_path_len)
 
-                case PathDiagnostic(Check.EMPTY, path):
-                    error_repr = f"{path.name} ~ directory contains no files"
-                    repr_above = Text.assemble("/", (error_repr, ERROR_STYLE))
-                    if self.mode == "rename":
-                        repr_above.append((Text("\t==> DELETED", SUCCESS_STYLE)))
+                    case PathDiagnostic(Check.EMPTY, path):
+                        error_repr = f"{path.name} ~ directory contains no files"
+                        repr_above = Text.assemble("/", (error_repr, ERROR_STYLE))
+                        if self.mode == "rename":
+                            repr_above.append((Text("\t==> DELETED", SUCCESS_STYLE)))
 
-                    repr_under_list = []
+                        repr_under_list = []
 
-                case _:
-                    raise RuntimeError("Found invalid kind", row)
+                    case _:
+                        raise RuntimeError("Found invalid kind", row)
 
-            right_offset = max(len(r) for r in chain([repr_above], repr_under_list))
-            path_max_width = self.console_width - 9 - right_offset
-            root, left_offset = self._clamp(Text(str(path.parent)), path_max_width)
+                right_offset = max(len(r) for r in chain([repr_above], repr_under_list))
+                path_max_width = self.console_width - 9 - right_offset
+                root, left_offset = self._clamp(Text(str(path.parent)), path_max_width)
 
-            yield Text.assemble(diagnostic_repr[row.kind], root, repr_above)
-            for repr_under in repr_under_list:
-                yield Text.assemble("        ", " " * left_offset, repr_under)
+                yield Text.assemble(diagnostic_repr[row.kind], root, repr_above)
+                for repr_under in repr_under_list:
+                    yield Text.assemble("        ", " " * left_offset, repr_under)
 
     def _csv_repr(self) -> RenderResult:
         max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)

@@ -37,12 +37,14 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
             match invalid_data:
                 case PathDiagnostic(Check.CHARACTERS, path, matches):
                     new_path = path.rename(
-                        path.parent
-                        / re.sub(
-                            ctx.config.get_invalid_characters(fs),
-                            ctx.config.special_characters["replacement"],
-                            path.stem,
-                        )
+                        (
+                            path.parent
+                            / re.sub(
+                                ctx.config.get_invalid_characters(fs),
+                                ctx.config.special_characters["replacement"],
+                                path.stem,
+                            )
+                        ).with_suffix(path.suffix)
                     )
                     yield PathDiagnostic(Check.CHARACTERS, path, matches=matches, new_path=new_path)
 
