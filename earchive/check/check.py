@@ -6,7 +6,7 @@ from typing import Any, Generator
 from earchive.check.names import CTX, FS, Action, Check, CheckRepr, OutputKind, PathDiagnostic
 from earchive.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
 from earchive.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
-from earchive.check.utils import invalid_paths, plural
+from earchive.check.utils import invalid_paths, plural, walk_all
 from earchive.progress import Bar
 
 
@@ -49,7 +49,7 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
                     yield PathDiagnostic(Check.CHARACTERS, path, matches=matches, new_path=new_path)
 
     # second pass : replace patterns defined in the `cfg` file
-    for root, dirs, files in dir.walk(top_down=False, on_error=print):
+    for root, dirs, files in walk_all(dir, top_down=False, on_error=print):
         for file in files + dirs:
             rename_data = _rename_if_match(root / file, ctx)
 

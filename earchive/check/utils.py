@@ -1,6 +1,6 @@
 from itertools import chain
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any, Callable, Generator
 
 from earchive.progress import Bar
 from earchive.check.names import CTX, Check, PathDiagnostic
@@ -46,6 +46,21 @@ def check_valid_file(
             yield PathDiagnostic(Check.LENGTH, path)
 
 
+def walk_all(
+    path: Path,
+    top_down: bool = True,
+    on_error: Callable[[OSError], object] | None = None,
+    follow_symlinks: bool = False,
+) -> Generator[tuple[Path, list[str], list[str]], None, None]:
+    if top_down:
+        yield path.parent, [str(path)] if path.is_dir() else [], [str(path)] if path.is_file() else []
+
+    yield from path.walk(top_down=top_down, on_error=on_error, follow_symlinks=follow_symlinks)
+
+    if not top_down:
+        yield path.parent, [str(path)] if path.is_dir() else [], [str(path)] if path.is_file() else []
+
+
 def invalid_paths(path: Path, ctx: CTX, checks: Check, progress: Bar[Any]) -> Generator[PathDiagnostic, None, None]:
     if path.is_file():
         yield from check_valid_file(path, ctx, checks, set())
@@ -53,7 +68,7 @@ def invalid_paths(path: Path, ctx: CTX, checks: Check, progress: Bar[Any]) -> Ge
     else:
         empty_dirs = set()
 
-        for root, dirs, files in progress(path.walk(top_down=False, on_error=print)):
+        for root, dirs, files in progress(walk_all(path, top_down=False, on_error=print)):
             for file in files + dirs:
                 # split: avoid checking dirs empty
                 yield from check_valid_file(root / file, ctx, checks, empty_dirs)
