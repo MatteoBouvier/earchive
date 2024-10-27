@@ -1,22 +1,24 @@
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Any, Optional
 
+import click
 import typer
-from typing_extensions import Annotated
+from rich.console import Console
 
 from earchive.check import FS, Check, OutputKind, check_path
 from earchive.cli import show_tree
 from earchive.compare import compare as compare_paths
+from earchive.copy import copy_structure
 from earchive.doc import print_doc
 from earchive.tree import Node
-from earchive.copy import copy_structure
 
 app = typer.Typer(
     help="Collection of helper tools for digital archives management.",
     context_settings=dict(help_option_names=["--help", "-h"]),
     rich_markup_mode="rich",
     pretty_exceptions_enable=False,
+    no_args_is_help=True,
 )
 
 
@@ -73,6 +75,18 @@ def _parse_checks(
     )
 
 
+class _parse_OutputKind(click.ParamType):
+    name = f"[{'|'.join(OutputKind.__members__)}]"
+
+    def convert(self, value: str, param: Any, ctx: click.Context | None) -> OutputKind:
+        kind = OutputKind(value)
+        if kind.path_ is not None and Path(kind.path_).exists():
+            Console(stderr=True).print(f"Output file '{kind.path_}' already exists", style="bold red")
+            raise typer.Exit(3)
+
+        return kind
+
+
 @app.command()
 def check(
     path: Annotated[Path, typer.Argument(exists=True, help="Path to check")] = Path("."),
@@ -110,7 +124,13 @@ def check(
             show_default=False,
         ),
     ] = None,
-    output: Annotated[OutputKind, typer.Option(help="Output format")] = OutputKind.cli,
+    output: Annotated[
+        OutputKind,
+        typer.Option(
+            click_type=_parse_OutputKind(),
+            help="Output format. For csv, an output file can be specified with 'csv=path/to/output.csv'",
+        ),
+    ] = OutputKind.cli,
     fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:

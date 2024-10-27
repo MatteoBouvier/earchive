@@ -1,10 +1,11 @@
 from __future__ import annotations
-from enum import StrEnum, auto
+
+import dataclasses as dt
 import re
+import unicodedata
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import Any, Callable, TypedDict
-import unicodedata
-import dataclasses as dt
 
 
 class FS(StrEnum):
@@ -183,15 +184,11 @@ def parse_config(path: Path) -> Config:
     config = {}
     section: SECTIONS | None = None
 
-    print("hi")
-
     with open(path, "r") as config_file:
         for line_nb, line in enumerate(config_file, start=1):
             line = line.strip()
             if line == "":
                 continue
-
-            print(line)
 
             match re.split(r"[\[\]=]", line):
                 case ["", str(section_str), ""]:
@@ -199,7 +196,6 @@ def parse_config(path: Path) -> Config:
                     if section_str not in SECTIONS:
                         raise ParseError(f"Invalid section name '{section_str}'")
 
-                    print("section")
                     section = SECTIONS(section_str)
                     config[section] = _SECTION_FACTORY[section]()
 
@@ -207,7 +203,6 @@ def parse_config(path: Path) -> Config:
                     if section is None:
                         raise ParseError(f"Found values outside a section at line {line_nb}")
 
-                    print("simple value")
                     parse_, set_ = _VALUE_PARSER[section]
                     set_(config[section], None, parse_(p, line_nb))
 
@@ -215,9 +210,7 @@ def parse_config(path: Path) -> Config:
                     if section is None:
                         raise ParseError(f"Found values outside a section at line {line_nb}")
 
-                    print("key=value", key, value)
                     parse_, set_ = _KEY_VALUE_PARSER[section]
-                    print("parsed", *parse_(key, value, line_nb))
                     set_(config[section], *parse_(key, value, line_nb))
 
                 case _:

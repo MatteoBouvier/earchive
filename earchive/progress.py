@@ -1,13 +1,28 @@
-import time
 import sys
-from typing import Generator, Iterable, Self
+import time
 from itertools import cycle
+from typing import Generator, Iterable, Self
 
 
 class Bar[T]:
-    def __init__(self, iterable: Iterable[T] | None = None, miniters: int = 10, mininterval: float = 0.2) -> None:
-        self.iterable = iterable
+    def __init__(
+        self,
+        description: str = "",
+        total: int | None = None,
+        multiplier: int = 1,
+        percent: bool = False,
+        miniters: int = 10,
+        mininterval: float = 0.2,
+    ) -> None:
+        self.iterable = None
         self.counter = 0
+
+        self.description = description
+        self.total = total
+        self.multiplier = multiplier
+        self.percent = percent
+        if self.percent and not self.total:
+            raise ValueError("Cannot use percentage if total is not given")
 
         self.miniters = miniters
         self.mininterval = mininterval
@@ -30,6 +45,13 @@ class Bar[T]:
             ["[   ]", "[=  ]", "[== ]", "[ ==]", "[  =]", "[   ]", "[  =]", "[ ==]", "[== ]", "[=  ]"]
         )
 
+        if self.total is None:
+            counter_post = ""
+        elif self.percent:
+            counter_post = "%"
+        else:
+            counter_post = f"/{self.total}"
+
         try:
             for item in self.iterable:
                 yield item
@@ -39,8 +61,14 @@ class Bar[T]:
                 if self.counter - last_update_count >= self.miniters:
                     cur_t = time.time()
                     dt = cur_t - last_update_time
+
                     if dt >= self.mininterval:
-                        self.update(f"{next(animation_frames)} processed {self.counter} files")
+                        if self.total is not None and self.percent:
+                            counter_pre = f"{self.counter * self.multiplier / self.total * 100:.2f}"
+                        else:
+                            counter_pre = self.counter * self.multiplier
+
+                        self.update(f"{next(animation_frames)} {counter_pre}{counter_post} {self.description}")
                         last_update_count = self.counter
                         last_update_time = cur_t
 

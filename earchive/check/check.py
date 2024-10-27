@@ -86,7 +86,7 @@ def check_path(
     ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
     counter = Counter()
-    progress: Bar[Any] = Bar()
+    progress: Bar[Any] = Bar("processed files ...")
     messages = Grid(ctx, kind=output, mode="rename" if fix else "check")
 
     if fix:
@@ -98,7 +98,7 @@ def check_path(
             messages.add_row(invalid_data)
             counter.value += 1
 
-    console.print(messages, no_wrap=True)
+    messages.print(no_wrap=True)
 
     if fix:
         if output == OutputKind.cli:

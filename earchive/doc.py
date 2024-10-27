@@ -1,9 +1,9 @@
 from typing import Literal
-from rich.text import Text
 
-from rich.highlighter import RegexHighlighter
-from rich.theme import Theme
 from rich.console import Console
+from rich.highlighter import RegexHighlighter
+from rich.text import Text
+from rich.theme import Theme
 
 
 class DocHighlighter(RegexHighlighter):
@@ -82,6 +82,7 @@ check_doc = Text.assemble(
             "\t\t- silent only prints the number of invalid paths.\n",
             "\t\t- cli is more user-friendly and uses colors to clearly point at invalid path portions.\n",
             "\t\t- csv is easier to parse and to store.\n",
+            "\t\tFor writing the csv output directly to a file, you can specify a path as 'csv=<path>'.\n",
         ),
         P(
             "--fix\tFix invalid paths in <filename> to comply with rules on the target <file system>.",
