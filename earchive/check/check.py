@@ -49,7 +49,7 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
                     yield PathDiagnostic(Check.CHARACTERS, path, matches=matches, new_path=new_path)
 
     # second pass : replace patterns defined in the `cfg` file
-    for root, dirs, files in walk_all(dir, top_down=False, on_error=print):
+    for root, dirs, files in walk_all(dir, top_down=False):
         for file in files + dirs:
             rename_data = _rename_if_match(root / file, ctx)
 
@@ -87,7 +87,7 @@ def check_path(
 
     counter = Counter()
     progress: Bar[Any] = Bar("processed files ...")
-    messages = Grid(ctx, kind=output, mode="rename" if fix else "check")
+    messages = Grid(ctx, kind=output, mode="fix" if fix else "check")
 
     if fix:
         for message in _rename_core(dir, fs, ctx, checks, counter):

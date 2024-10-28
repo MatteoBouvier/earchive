@@ -42,6 +42,7 @@ CheckRepr = {Check.EMPTY: "Empty directories", Check.CHARACTERS: "Invalid charac
 
 
 class Action(Enum):
+    ERROR = auto()
     RENAME = auto()
 
 
@@ -54,3 +55,4 @@ class PathDiagnostic(NamedTuple):
     matches: list[re.Match[str]] | None = None
     patterns: list[tuple[RegexPattern, str]] | None = None
     new_path: Path | None = None
+    error: Exception | None = None

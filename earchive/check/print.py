@@ -85,7 +85,7 @@ def _repr_too_long(file_name: str, path_len: int, max_len: int) -> tuple[Text, l
 
 
 class Grid:
-    def __init__(self, ctx: CTX, kind: OutputKind, mode: Literal["check", "rename"]) -> None:
+    def __init__(self, ctx: CTX, kind: OutputKind, mode: Literal["check", "fix"]) -> None:
         self.ctx = ctx
         self.kind = kind
         self.mode = mode
@@ -107,6 +107,7 @@ class Grid:
             Check.CHARACTERS: "BADCHAR ",
             Check.LENGTH: "LENGTH  ",
             Check.EMPTY: "EMPTY   ",
+            Action.ERROR: "ERROR   ",
             Action.RENAME: "RENAME  ",
         }
 
@@ -125,9 +126,13 @@ class Grid:
                 case PathDiagnostic(Check.EMPTY, path):
                     error_repr = f"{path.name} ~ directory contains no files"
                     repr_above = Text.assemble("/", (error_repr, ERROR_STYLE))
-                    if self.mode == "rename":
+                    if self.mode == "fix":
                         repr_above.append((Text("\t==> DELETED", SUCCESS_STYLE)))
 
+                    repr_under_list = []
+
+                case PathDiagnostic(Action.ERROR, path, error=OSError() as err):
+                    repr_above = f"{path.name} ~ {err.errno}, {err.strerror}"
                     repr_under_list = []
 
                 case _:
@@ -143,8 +148,8 @@ class Grid:
 
     def _csv_repr(self) -> RenderResult:
         max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
-        header = "Error;Description;Reason;File_path;File_name"
-        if self.mode == "rename":
+        header = "Kind;Description;Reason;File_path;File_name"
+        if self.mode == "fix":
             header += ";File_new_name"
 
         yield header
@@ -167,14 +172,20 @@ class Grid:
                 case PathDiagnostic(Check.LENGTH, path):
                     text = f"LENGTH;Path is too long;{len(str(path))} > {max_path_len};{str(path.parent)};{path.name}"
 
-                    if self.mode == "rename":
+                    if self.mode == "fix":
                         text += ";"
 
                 case PathDiagnostic(Check.EMPTY, path):
                     text = f"EMPTY;Directory contains no files;;{str(path.parent)};{path.name}"
 
-                    if self.mode == "rename":
+                    if self.mode == "fix":
                         text += ";DELETED"
+
+                case PathDiagnostic(Action.ERROR, path, error=OSError() as err):
+                    text = f"ERROR;{err.errno};{err.strerror};{str(path.parent)};{path.name}"
+
+                    if self.mode == "fix":
+                        text += ";"
 
                 case _:
                     raise RuntimeError("Found invalid kind", row)

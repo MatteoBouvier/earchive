@@ -7,6 +7,7 @@ from typing import Generator, Iterable, Self
 class Bar[T]:
     def __init__(
         self,
+        iterable: Iterable[T] | None = None,
         description: str = "",
         total: int | None = None,
         multiplier: int = 1,
@@ -14,7 +15,7 @@ class Bar[T]:
         miniters: int = 10,
         mininterval: float = 0.2,
     ) -> None:
-        self.iterable = None
+        self.iterable = iterable
         self.counter = 0
 
         self.description = description
@@ -85,3 +86,14 @@ class Bar[T]:
     def clear(self) -> None:
         sys.stderr.write("\r" + (" " * self.last_len) + "\r")
         sys.stderr.flush()
+
+
+class _NoBar[T](Bar):
+    def __iter__(self) -> Generator[T, None, None]:
+        if self.iterable is None:
+            raise ValueError("No iterable was passed")
+
+        yield from self.iterable
+
+
+NoBar = _NoBar()

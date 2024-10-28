@@ -1,6 +1,11 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from earchive.check.parse_config import parse_config
+
+from earchive.check.names import CTX, Action, Check, PathDiagnostic
+from earchive.check.parse_config import DEFAULT_CONFIG, FS, parse_config
+from earchive.check.utils import invalid_paths
+from tests.mock_filesystem import FileSystem as fs
+from tests.mock_filesystem import PathMock
 
 
 def test_should_parse_config_special_characters_extra():
@@ -12,3 +17,25 @@ def test_should_parse_config_special_characters_extra():
     assert config.special_characters["extra"] == "- "
 
     Path(config_file.name).unlink()
+
+
+def test_should_find_empty_directories():
+    path = PathMock("/", file_system=fs([fs.D("a"), fs.D("b", [fs.F("c"), fs.D("d")])]))
+
+    ctx = CTX(DEFAULT_CONFIG, FS.windows)
+    invalids = list(invalid_paths(path, ctx, checks=Check.EMPTY))
+
+    assert invalids == [PathDiagnostic(Check.EMPTY, Path("/b/d")), PathDiagnostic(Check.EMPTY, Path("/a"))]
+
+
+def test_should_convert_permission_denied_error_to_diagnostic():
+    path = PathMock("/", file_system=fs([fs.D("a"), fs.D("b", mode=0o000)]))
+
+    ctx = CTX(DEFAULT_CONFIG, FS.windows)
+    invalids = list(invalid_paths(path, ctx, checks=Check.NO_CHECK))
+
+    assert len(invalids) == 1
+    assert invalids[0].kind == Action.ERROR
+    assert invalids[0].path == Path("b")
+    assert type(invalids[0].error) is PermissionError
+    assert invalids[0].error.filename == "b"
