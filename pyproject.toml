@@ -46,3 +46,6 @@ exclude = [
     "tests",
     "vulture_whitelist.py",
 ]
+
+[tool.pyright]
+include = ["earchive", "tests"]

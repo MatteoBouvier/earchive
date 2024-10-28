@@ -30,7 +30,7 @@ def _rename_if_match(path: Path, ctx: CTX) -> PathDiagnostic | None:
         return PathDiagnostic(Action.RENAME, path, patterns=matched_patterns, new_path=new_path)
 
 
-def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -> Generator[PathDiagnostic, None, None]:
+def _rename(dir: Path, ctx: CTX, checks: Check, counter: Counter) -> Generator[PathDiagnostic, None, None]:
     # First pass : remove special characters
     if Check.CHARACTERS in checks:
         for invalid_data in invalid_paths(dir, ctx, checks=Check.CHARACTERS, progress=Bar()):
@@ -40,7 +40,7 @@ def _rename_core(dir: Path, fs: FS, ctx: CTX, checks: Check, counter: Counter) -
                         (
                             path.parent
                             / re.sub(
-                                ctx.config.get_invalid_characters(fs),
+                                ctx.config.get_invalid_characters(ctx.fs),
                                 ctx.config.special_characters["replacement"],
                                 path.stem,
                             )
@@ -90,7 +90,7 @@ def check_path(
     messages = Grid(ctx, kind=output, mode="fix" if fix else "check")
 
     if fix:
-        for message in _rename_core(dir, fs, ctx, checks, counter):
+        for message in _rename(dir, ctx, checks, counter):
             messages.add_row(message)
 
     else:

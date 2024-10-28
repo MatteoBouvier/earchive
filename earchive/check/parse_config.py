@@ -97,7 +97,7 @@ class Config:
 
 
 DEFAULT_CONFIG = Config(
-    windows={"special_characters": r"<>:/\\|?*", "max_path_length": 260},
+    windows={"special_characters": r"<>:/\\|?*", "max_path_length": 260},  # TODO: 255
     special_characters={"extra": "", "replacement": "_"},
     rename=[],
     exclude=[],
