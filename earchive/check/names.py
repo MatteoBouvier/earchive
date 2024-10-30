@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 from enum import Enum, IntFlag, StrEnum, auto
 from pathlib import Path
-from typing import NamedTuple, Self
+from typing import TYPE_CHECKING, NamedTuple, Self
 
-from earchive.check.parse_config import FS, Config, RegexPattern
+if TYPE_CHECKING:
+    from earchive.check.config import RegexPattern
 
 
 class OutputKind(StrEnum):
@@ -26,16 +27,21 @@ class OutputKind(StrEnum):
         return super()._missing_(value)
 
 
-class CTX(NamedTuple):
-    config: Config
-    fs: FS
-
-
 class Check(IntFlag):
     NO_CHECK = 0
     EMPTY = auto()
     CHARACTERS = auto()
     LENGTH = auto()
+
+    @classmethod
+    def _missing_(cls, value: object) -> Self:
+        if isinstance(value, str):
+            try:
+                return cls.__members__[value.upper()]
+            except KeyError:
+                return super()._missing_(value)
+
+        return super()._missing_(value)
 
 
 CheckRepr = {Check.EMPTY: "Empty directories", Check.CHARACTERS: "Invalid characters", Check.LENGTH: "Path length"}

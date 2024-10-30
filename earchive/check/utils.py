@@ -3,7 +3,8 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Generator
 
-from earchive.check.names import CTX, Action, Check, PathDiagnostic
+from earchive.check.config import Config
+from earchive.check.names import Action, Check, PathDiagnostic
 from earchive.progress import Bar, NoBar
 
 
@@ -11,10 +12,10 @@ def plural(value: int) -> str:
     return "" if value == 1 else "s"
 
 
-def _is_excluded(path: Path, ctx: CTX) -> bool:
-    if not len(ctx.config.exclude):
+def _is_excluded(path: Path, config: Config) -> bool:
+    if not len(config.exclude):
         return False
-    return any(parent in ctx.config.exclude for parent in chain([path], path.parents))
+    return any(parent in config.exclude for parent in chain([path], path.parents))
 
 
 def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
@@ -27,9 +28,9 @@ def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
 
 
 def check_valid_file(
-    path: Path, ctx: CTX, checks: Check, empty_dirs: set[Path]
+    path: Path, config: Config, checks: Check, empty_dirs: set[Path]
 ) -> Generator[PathDiagnostic, None, None]:
-    if _is_excluded(path, ctx):
+    if _is_excluded(path, config):
         return
 
     if Check.EMPTY in checks:
@@ -37,13 +38,13 @@ def check_valid_file(
             yield PathDiagnostic(Check.EMPTY, path)
 
     if Check.CHARACTERS in checks:
-        match = list(ctx.config.get_invalid_characters(ctx.fs).finditer(path.stem))
+        match = list(config.invalid_characters.finditer(path.stem))
 
         if len(match):
             yield PathDiagnostic(Check.CHARACTERS, path, match)
 
     if Check.LENGTH in checks:
-        if len(str(path)) > ctx.config.get_max_path_length(ctx.fs):
+        if len(str(path)) > config.get_max_path_length():
             yield PathDiagnostic(Check.LENGTH, path)
 
 
@@ -77,13 +78,16 @@ def walk_all(
 
 
 def invalid_paths(
-    path: Path, ctx: CTX, checks: Check, progress: Bar[Any] = NoBar
+    path: Path, config: Config, checks: Check | None = None, progress: Bar[Any] = NoBar
 ) -> Generator[PathDiagnostic, None, None]:
     empty_dirs = set()
     errors = []
 
+    if checks is None:
+        checks = config.check.run
+
     for root, dirs, files in progress(walk_all(path, errors, top_down=False)):
         for file in files + dirs:
-            yield from check_valid_file(root / file, ctx, checks, empty_dirs)
+            yield from check_valid_file(root / file, config, checks, empty_dirs)
 
     yield from errors

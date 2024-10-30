@@ -53,17 +53,19 @@ check_doc = Text.assemble(
         P("earchive check -h | --help"),
         P("earchive check --doc"),
         P(r"""earchive check [<filename>]
-                           [-f | --fs <file system>]
-                           [-c | --config <path>]
+                           [--fs <file system>]
+                           [--destination <dest_path>]
+                           [--config <config_path>]
                            [--output <format>]
                            [--fix]
-                           [-[+]eil]
+                           [--check-all | -A]
+                           [-eEiIlL]
 """),
     ),
     B(
         H("description"),
         P(
-            "Check performs checks on a file or directory <filename> to find file names that would be invalid on a target <file system>.",
+            "Check performs checks on a file or directory <filename> to find file names that would be invalid on a target <file_system>.",
             "This is usefull to identify issues before copying files from one file system to another.",
         ),
     ),
@@ -72,10 +74,17 @@ check_doc = Text.assemble(
         P("-h or --help", "\n\t\tDisplay a short description of this command with a summary of its options.\n"),
         P("--doc\tDisplay the full command documentation.\n"),
         P(
-            "-f or --fs <file system>",
-            "\n\t\tSelect the target file system for the checks. <file system> can be [windows].\n",
+            "--fs <file_system>",
+            "\n\t\tSelect the target file system for the checks. <file_system> can be [windows|auto].\n",
+            "\t\tWhen using 'auto', the '--destination' option should provide a path on a target file system : its type will be infered for <file system>.\n",
         ),
-        P("-c or --config <path>", "\n\t\tProvide a", _Link("configuration"), "file.\n"),
+        P(
+            "--destination <dest_path>",
+            "\n\t\tProvide a destination path to which <filename> would be copied.\n",
+            "\t\t- The maximum path length is shortened by the length of <dest_path>\n",
+            "\t\t- The target <file_system> can be automatically infered.\n",
+        ),
+        P("--config <config_path>", "\n\t\tProvide a", _Link("configuration"), "file.\n"),
         P(
             "--output <format>",
             "\n\t\tSelect an output <format. <format> can be [silent|cli|csv].\n",
@@ -85,18 +94,18 @@ check_doc = Text.assemble(
             "\t\tFor writing the csv output directly to a file, you can specify a path as 'csv=<path>'.\n",
         ),
         P(
-            "--fix\tFix invalid paths in <filename> to comply with rules on the target <file system>.",
+            "--fix\tFix invalid paths in <filename> to comply with rules on the target <file_system>.",
             "\n\t\tFirst, invalid characters are replaced with a replacement character, _ (underscore) by default."
             "\n\t\tThen, files and directories are renamed according to rules defined in the",
             _Link("configuration"),
             "file. If all checks are disabled, this is the only operation performed.",
             "\n\t\tFinally, empty directories are removed and path lengths are checked.\n",
         ),
-        P("-e or --check-empty-dirs", "\n\t\tCheck for (or remove) empty directories recursively.\n"),
         P(
-            "+e or --add-check-empty-dirs",
-            "\n\t\tCheck for (or remove) empty directories as well as the default -i and -l checks.\n",
+            "-A or --check-all",
+            "\n\t\tRun all available checks.\n",
         ),
+        P("-e or --check-empty-dirs", "\n\t\tCheck for (or remove) empty directories recursively.\n"),
         P(
             "-i or --check-invalid-characters",
             "\n\t\tCheck for invalid characters in file paths. Active by default.",
@@ -115,10 +124,6 @@ check_doc = Text.assemble(
             "-e, -i and -l options individually select checks to be run, i.e. `earchive check -e` will ONLY run checks for empty directories.",
             "Individual checks may be disabled with the corresponding capital letter options -E (--no-check-empty-dirs), -I (--no-check-invalid-characters) and -L (--no-check-path-length).",
         ),
-        P(
-            "For convenience, the +e option can be used to add empty directories checks to the default -i and -l checks."
-            "This is equivalent to `earchive check -i -l -e`.",
-        ),
     ),
     B(
         H("configuration"),
@@ -127,29 +132,46 @@ check_doc = Text.assemble(
         ),
         P(
             """
-[windows]
-special_characters = <>:/\\|?*
-max_path_length = 260
+[check]
+run = CHARACTERS LENGTH
+file_system = windows
+base_path_length = 0
 
-[special_characters]
+[check.characters]
 extra = ""
 replacement = _
 
-[replace]
+[file_systems.windows]
+special_characters = <>:/\\|?*
+max_path_length = 255
+
+[rename]
 
 [exclude]
 """,
         ),
         P(
-            "Section [special_characters] allows to define:"
-            "\n\t- extra characters to consider invalid if found in file paths during -i checks.",
-            "\n\t- a replacement string for invalid characters.\n",
+            "Section [check] allows to define:\n"
+            "\t- 'run' : checks to perform, can one or more in [CHARACTERS|LENGTH|EMPTY].\n",
+            "\t- 'file_system' : a target file system.\n",
+            "\t- 'base_path_length' : in case <filename> needs to be copied to a directory, that directory's path length to subtract from the target file system's max path length.\n\n",
+            "\tThese values may be overridden by cli options '--fs', '--destination' and '-eEiIlLA' if specified.\n\n",
         ),
         P(
-            "Section [replace] allows to define renaming rules to apply to file paths (one rule per line).",
+            "Section [check.characters] allows to define:"
+            "\n\t- 'extra' : characters to consider invalid if found in file paths during -i checks.",
+            "\n\t- 'replacement' : a replacement string for invalid characters.\n\n",
         ),
         P(
-            "Section [exclude] allows to define a list of paths to exclude from the analysis (one path per line). Paths can be absolute or relative to the command's execution directory."
+            "Sections [file_system.<FS>] allows to define, for an individual file system <FS>:"
+            "\n\t- 'special_characters' : characters to consider invalid if found in file paths during -i checks.",
+            "\n\t- 'max_path_leng' : the file system's max path length.\n\n",
+        ),
+        P(
+            "Section [replace] allows to define renaming rules to apply to file paths (one rule per line).\n",
+        ),
+        P(
+            "Section [exclude] allows to define a list of paths to exclude from the analysis (one path per line). Paths can be absolute or relative to the command's execution directory.\n"
         ),
     ),
     B(

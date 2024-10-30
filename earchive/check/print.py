@@ -9,8 +9,8 @@ from typing import Any, Literal
 from rich.console import Console, RenderResult
 from rich.text import Text
 
-from earchive.check.names import CTX, Action, Check, OutputKind, PathDiagnostic
-from earchive.check.parse_config import RegexPattern
+from earchive.check.names import Action, Check, OutputKind, PathDiagnostic
+from earchive.check.config import RegexPattern, Config
 from earchive.progress import Bar
 
 console = Console(force_terminal=True, legacy_windows=False)
@@ -85,8 +85,8 @@ def _repr_too_long(file_name: str, path_len: int, max_len: int) -> tuple[Text, l
 
 
 class Grid:
-    def __init__(self, ctx: CTX, kind: OutputKind, mode: Literal["check", "fix"]) -> None:
-        self.ctx = ctx
+    def __init__(self, config: Config, kind: OutputKind, mode: Literal["check", "fix"]) -> None:
+        self.config = config
         self.kind = kind
         self.mode = mode
 
@@ -120,7 +120,7 @@ class Grid:
                     repr_above, repr_under_list = _repr_renames(path.name, patterns, new_path)
 
                 case PathDiagnostic(Check.LENGTH, path):
-                    max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
+                    max_path_len = self.config.get_max_path_length()
                     repr_above, repr_under_list = _repr_too_long(path.name, len(str(path)), max_path_len)
 
                 case PathDiagnostic(Check.EMPTY, path):
@@ -147,7 +147,7 @@ class Grid:
                 yield Text.assemble("        ", " " * left_offset, repr_under)
 
     def _csv_repr(self) -> RenderResult:
-        max_path_len = self.ctx.config.get_max_path_length(self.ctx.fs)
+        max_path_len = self.config.get_max_path_length()
         header = "Kind;Description;Reason;File_path;File_name"
         if self.mode == "fix":
             header += ";File_new_name"

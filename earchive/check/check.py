@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator
 
-from earchive.check.names import CTX, FS, Action, Check, CheckRepr, OutputKind, PathDiagnostic
-from earchive.check.parse_config import DEFAULT_CONFIG, RegexPattern, parse_config
+from earchive.check.names import Action, Check, CheckRepr, OutputKind, PathDiagnostic
+from earchive.check.config import Config, RegexPattern
 from earchive.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
 from earchive.check.utils import invalid_paths, plural, walk_all
 from earchive.progress import Bar
@@ -15,11 +15,11 @@ class Counter:
     value: int = 0
 
 
-def _rename_if_match(path: Path, ctx: CTX) -> PathDiagnostic | None:
+def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
     new_name = str(path.name)
     matched_patterns: list[tuple[RegexPattern, str]] = []
 
-    for pattern in ctx.config.rename:
+    for pattern in config.rename:
         new_name, nsubs = pattern.match.subn(pattern.replacement, pattern.normalize(new_name))
 
         if nsubs:
@@ -30,18 +30,18 @@ def _rename_if_match(path: Path, ctx: CTX) -> PathDiagnostic | None:
         return PathDiagnostic(Action.RENAME, path, patterns=matched_patterns, new_path=new_path)
 
 
-def _rename(dir: Path, ctx: CTX, checks: Check, counter: Counter) -> Generator[PathDiagnostic, None, None]:
+def _rename(dir: Path, config: Config, counter: Counter) -> Generator[PathDiagnostic, None, None]:
     # First pass : remove special characters
-    if Check.CHARACTERS in checks:
-        for invalid_data in invalid_paths(dir, ctx, checks=Check.CHARACTERS, progress=Bar()):
+    if Check.CHARACTERS in config.check.run:
+        for invalid_data in invalid_paths(dir, config, checks=Check.CHARACTERS, progress=Bar()):
             match invalid_data:
                 case PathDiagnostic(Check.CHARACTERS, path, matches):
                     new_path = path.rename(
                         (
                             path.parent
                             / re.sub(
-                                ctx.config.get_invalid_characters(ctx.fs),
-                                ctx.config.special_characters["replacement"],
+                                config.invalid_characters,
+                                config.check.characters.replacement,
                                 path.stem,
                             )
                         ).with_suffix(path.suffix)
@@ -51,15 +51,15 @@ def _rename(dir: Path, ctx: CTX, checks: Check, counter: Counter) -> Generator[P
     # second pass : replace patterns defined in the `cfg` file
     for root, dirs, files in walk_all(dir, top_down=False):
         for file in files + dirs:
-            rename_data = _rename_if_match(root / file, ctx)
+            rename_data = _rename_if_match(root / file, config)
 
             if rename_data is not None:
                 yield rename_data
 
     # thrid pass : check for paths still too long / remove empty directories
-    remaining_checks = checks ^ Check.CHARACTERS
+    remaining_checks = config.check.run ^ Check.CHARACTERS
     if remaining_checks:
-        for invalid_data in invalid_paths(dir, ctx, checks=remaining_checks, progress=Bar()):
+        for invalid_data in invalid_paths(dir, config, checks=remaining_checks, progress=Bar()):
             match invalid_data:
                 case PathDiagnostic(Check.EMPTY, path):
                     path.rmdir()
@@ -73,28 +73,25 @@ def _rename(dir: Path, ctx: CTX, checks: Check, counter: Counter) -> Generator[P
 
 def check_path(
     dir: Path,
-    fs: FS,
-    cfg: Path | None,
-    checks: Check = Check.CHARACTERS | Check.LENGTH,
+    config: Config,
     output: OutputKind = OutputKind.cli,
     fix: bool = False,
 ) -> int:
-    if not checks and not fix:
+    if not config.check.run and not fix:
         return 0
 
     dir = dir.resolve(strict=True)
-    ctx = CTX(DEFAULT_CONFIG if cfg is None else parse_config(cfg), fs)
 
     counter = Counter()
     progress: Bar[Any] = Bar("processed files ...")
-    messages = Grid(ctx, kind=output, mode="fix" if fix else "check")
+    messages = Grid(config, kind=output, mode="fix" if fix else "check")
 
     if fix:
-        for message in _rename(dir, ctx, checks, counter):
+        for message in _rename(dir, config, counter):
             messages.add_row(message)
 
     else:
-        for invalid_data in invalid_paths(dir, ctx, checks=checks, progress=progress):
+        for invalid_data in invalid_paths(dir, config, progress=progress):
             messages.add_row(invalid_data)
             counter.value += 1
 
@@ -102,7 +99,7 @@ def check_path(
 
     if fix:
         if output == OutputKind.cli:
-            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in checks])}")
+            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
             if counter.value:
                 console.print(
                     f"{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE
@@ -115,7 +112,7 @@ def check_path(
 
     else:
         if output == OutputKind.cli:
-            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in checks])}")
+            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
             console.print(
                 f"Found {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
                 style=ERROR_STYLE if counter.value else SUCCESS_STYLE,

@@ -4,9 +4,11 @@ from typing import Annotated, Any, Optional
 
 import click
 import typer
-from rich.console import Console
+from rich import print as rprint
+from rich.text import Text
 
-from earchive.check import FS, Check, OutputKind, check_path
+import earchive.errors as err
+from earchive.check import FS, Check, OutputKind, check_path, parse_config
 from earchive.cli import show_tree
 from earchive.compare import compare as compare_paths
 from earchive.copy import copy_structure
@@ -51,13 +53,14 @@ def _parse_checks(
     check_empty_dirs: bool | None,
     check_invalid_characters: bool | None,
     check_path_length: bool | None,
-    add_check_empty_dirs: bool,
-) -> Check:
+    check_all: bool,
+) -> Check | None:
+    if check_all:
+        return Check.EMPTY | Check.CHARACTERS | Check.LENGTH
+
     # no option selected (True OR False) : use defaults
     if all(map(lambda c: c is None, (check_empty_dirs, check_invalid_characters, check_path_length))):
-        if add_check_empty_dirs:
-            return Check.EMPTY | Check.CHARACTERS | Check.LENGTH
-        return Check.CHARACTERS | Check.LENGTH
+        return None
 
     # some options selected as True : use only selected checks
     if any(c for c in (check_empty_dirs, check_invalid_characters, check_path_length)):
@@ -81,8 +84,8 @@ class _parse_OutputKind(click.ParamType):
     def convert(self, value: str, param: Any, ctx: click.Context | None) -> OutputKind:
         kind = OutputKind(value)
         if kind.path_ is not None and Path(kind.path_).exists():
-            Console(stderr=True).print(f"Output file '{kind.path_}' already exists", style="bold red")
-            raise typer.Exit(3)
+            with err.raise_typer():
+                raise err.os_error(f"Output file '{kind.path_}' already exists")
 
         return kind
 
@@ -90,10 +93,27 @@ class _parse_OutputKind(click.ParamType):
 @app.command()
 def check(
     path: Annotated[Path, typer.Argument(exists=True, help="Path to check")] = Path("."),
-    fs: Annotated[FS, typer.Option("--fs", "-f", help="Target file system")] = FS.windows,
-    config: Annotated[
-        Optional[Path], typer.Option("--config", "-c", exists=True, dir_okay=False, help="Path to config file")
+    doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
+    fs: Annotated[FS, typer.Option(help="Target file system")] = FS.AUTO,
+    destination: Annotated[
+        Optional[Path],
+        typer.Option(
+            exists=True,
+            file_okay=False,
+            writable=True,
+            help="Destination path where files would be copied to.",
+        ),
     ] = None,
+    config: Annotated[Optional[Path], typer.Option(exists=True, dir_okay=False, help="Path to config file")] = None,
+    output: Annotated[
+        OutputKind,
+        typer.Option(
+            click_type=_parse_OutputKind(),
+            help="Output format. For csv, an output file can be specified with 'csv=path/to/output.csv'",
+        ),
+    ] = OutputKind.cli,
+    fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
+    check_all: Annotated[bool, typer.Option("--check-all", "-A", help="Perform all available checks")] = False,
     check_empty_dirs: Annotated[
         Optional[bool],
         typer.Option(
@@ -103,9 +123,6 @@ def check(
             show_default=False,
         ),
     ] = None,
-    add_check_empty_dirs: Annotated[
-        bool, typer.Option("--add-check-empty-dirs", "+e", help="Add check for empty directories to default checks")
-    ] = False,
     check_invalid_characters: Annotated[
         Optional[bool],
         typer.Option(
@@ -124,26 +141,20 @@ def check(
             show_default=False,
         ),
     ] = None,
-    output: Annotated[
-        OutputKind,
-        typer.Option(
-            click_type=_parse_OutputKind(),
-            help="Output format. For csv, an output file can be specified with 'csv=path/to/output.csv'",
-        ),
-    ] = OutputKind.cli,
-    fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
-    doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
 ) -> None:
     r""":mag: [blue]Check[/blue] for invalid paths on a target file system and fix them."""
     if doc:
         print_doc("check")
         raise typer.Exit()
 
-    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, add_check_empty_dirs)
-    nb_issues = check_path(path, fs, config, checks=checks, output=output, fix=fix)
+    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, check_all)
+    with err.raise_typer():
+        cfg = parse_config(config, fs, destination, checks)
+
+    nb_issues = check_path(path, cfg, output=output, fix=fix)
 
     if nb_issues:
-        raise typer.Exit(code=2 if fix else 1)
+        raise typer.Exit(code=err.FIX_FAILED if fix else err.CHECK_FAILED)
 
 
 @app.command()
