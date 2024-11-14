@@ -5,7 +5,14 @@ from tempfile import NamedTemporaryFile
 from earchive.commands.check.check import Counter, rename
 from earchive.commands.check.config import Config, parse_config
 from earchive.commands.check.config.config import CliConfig
-from earchive.commands.check.config.names import ASCII, CHECK_CHARACTERS_CONFIG, CHECK_CONFIG, ConfigDict
+from earchive.commands.check.config.names import (
+    ASCII,
+    BEHAVIOR_CONFIG,
+    CHECK_CHARACTERS_CONFIG,
+    CHECK_CONFIG,
+    COLLISION,
+    ConfigDict,
+)
 from earchive.commands.check.names import (
     Check,
     PathCharactersReplaceDiagnostic,
@@ -21,6 +28,7 @@ from tests.mock_filesystem import PathMock
 
 def DEFAULT_CONFIG(path: PathMock) -> ConfigDict:
     return ConfigDict(
+        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT),
         check=CHECK_CONFIG(
             run=Check.NO_CHECK,
             path=path,
@@ -109,3 +117,23 @@ replacement = "_"
     assert diagnostics[0].new_path == Path("/file_path_dots.txt")
 
     Path(config_file.name).unlink()
+
+
+def test_rename_should_avoid_name_collision():
+    path = PathMock("/", file_system=fs([fs.F("b?"), fs.D("b_", [fs.F("c>test.txt"), fs.F("c_test.txt")])]))
+
+    with NamedTemporaryFile(delete=False) as config_file:
+        config_file.write(b"""[check]
+run = ["CHARACTERS"]
+""")
+
+    config = parse_config(Path(config_file.name), cli_cfg, path, None, None, [])
+    diagnostics = list(rename(config, Counter()))
+
+    assert len(diagnostics) == 2
+    assert isinstance(diagnostics[0], PathCharactersReplaceDiagnostic)
+    assert isinstance(diagnostics[1], PathCharactersReplaceDiagnostic)
+    assert diagnostics[0].path == Path("/b_/c>test.txt")
+    assert diagnostics[0].new_path == Path("/b_/c_test(1).txt")
+    assert diagnostics[1].path == Path("/b?")
+    assert diagnostics[1].new_path == Path("/b_(1)")

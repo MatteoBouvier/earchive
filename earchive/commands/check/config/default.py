@@ -1,7 +1,14 @@
 import re
 from pathlib import Path
 
-from earchive.commands.check.config.names import ASCII, CHECK_CHARACTERS_CONFIG, CHECK_CONFIG, ConfigDict
+from earchive.commands.check.config.names import (
+    ASCII,
+    COLLISION,
+    BEHAVIOR_CONFIG,
+    CHECK_CHARACTERS_CONFIG,
+    CHECK_CONFIG,
+    ConfigDict,
+)
 from earchive.commands.check.names import Check
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
@@ -21,6 +28,7 @@ DEFAULT_CHECK_CHARACTERS = CHECK_CHARACTERS_CONFIG(
 
 def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
     return ConfigDict(
+        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT),
         check=CHECK_CONFIG(
             run=DEFAULT_CHECK_RUN,
             path=check_path,

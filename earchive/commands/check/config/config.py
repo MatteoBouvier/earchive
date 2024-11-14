@@ -9,7 +9,7 @@ from typing import Any, NotRequired, TypedDict, override
 
 import earchive.errors as err
 from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
-from earchive.commands.check.config.names import ASCII, CHECK_CONFIG, ConfigDict
+from earchive.commands.check.config.names import ASCII, BEHAVIOR_CONFIG, CHECK_CONFIG, COLLISION, ConfigDict
 from earchive.commands.check.config.os import CONFIG_OPERATING_SYSTEMS
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.utils.fs import FS
@@ -55,6 +55,7 @@ class _Cache(TypedDict):
 
 @dataclass(frozen=True, repr=False)
 class Config:
+    behavior: BEHAVIOR_CONFIG
     check: CHECK_CONFIG
     rename: list[RegexPattern]
     exclude: list[Path]
@@ -62,7 +63,7 @@ class Config:
 
     @classmethod
     def from_dict(cls, data: ConfigDict) -> Config:
-        return Config(check=data.check, rename=data.rename, exclude=data.exclude)
+        return Config(behavior=data.behavior, check=data.check, rename=data.rename, exclude=data.exclude)
 
     def to_dict(self) -> dict[str, Any]:
         return dict(check=self.check.to_dict(), rename=self.rename, exclude=self.exclude)
@@ -116,12 +117,17 @@ class CliConfig:
     characters_replacement: str | None = None
     characters_ascii: ASCII | None = None
     rename: list[RegexPattern] = field(default_factory=list)
+    behavior_collision: COLLISION | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CliConfig:
         return CliConfig(**data)
 
     def update_config(self, config: ConfigDict) -> None:
+        if self.behavior_collision is not None:
+            err.assert_option(err.IsType("collision", self.behavior_collision, COLLISION))
+            config.behavior.collision = self.behavior_collision
+
         if self.os is not None:
             err.assert_option(err.IsType("os", self.os, OS))
             config.check.operating_system = self.os

@@ -10,7 +10,7 @@ from earchive.commands.check.config.cast import as_bool, as_enum, as_path, as_re
 from earchive.commands.check.config.config import CliConfig, Config
 from earchive.commands.check.config.default import DEFAULT_CONFIG
 from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
-from earchive.commands.check.config.names import ASCII, HEADER, ConfigDict
+from earchive.commands.check.config.names import ASCII, COLLISION, HEADER, ConfigDict
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
 from earchive.utils.fs import FS, get_file_system
@@ -73,6 +73,9 @@ def _update_config_from_file(config: ConfigDict, path: Path) -> None:
 
         for header, value in _destructure(data):
             match header:
+                case HEADER.BEHAVIOR_COLLISION:
+                    config.behavior.collision = as_enum(COLLISION)(value, "behavior:collision")
+
                 case HEADER.CHECK_RUN:
                     config.check.run = as_enum(Check)(value, "run")
 
@@ -230,6 +233,7 @@ def parse_cli_config(options: list[str]) -> CliConfig:
         characters_extra_invalid=as_regex,
         characters_replacement=as_str,
         characters_ascii=as_enum(ASCII),
+        behavior_collision=as_enum(COLLISION),
     )
 
     cli_options: dict[str, Any] = {}

@@ -100,6 +100,7 @@ def check(
     fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
     check_all: Annotated[bool, typer.Option("--all", help="Perform all available checks")] = False,
     options: Annotated[list[str], typer.Option("-o", help="Configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
+    behavior_options: Annotated[list[str], typer.Option("-O", help="Behavior configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     destination: Annotated[
         Optional[Path],
         typer.Option(
@@ -155,7 +156,7 @@ def check(
         raise typer.Exit()
 
     with err.raise_typer():
-        cli_config = parse_cli_config(options)
+        cli_config = parse_cli_config(options + ["behavior_" + bo for bo in behavior_options])
         checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, check_all)
         cfg = parse_config(config, cli_config, path, destination, checks, exclude)
 

@@ -14,6 +14,8 @@ from earchive.utils.os import OS
 
 class HEADER(StrEnum):
     NO_HEADER = ""
+    BEHAVIOR = auto()
+    BEHAVIOR_COLLISION = auto()
     CHECK = auto()
     CHECK_RUN = auto()
     CHECK_PATH = auto()
@@ -56,6 +58,19 @@ class ASCII(StrEnum):
     NO = auto()
 
 
+class COLLISION(StrEnum):
+    SKIP = auto()
+    INCREMENT = auto()
+
+
+@dataclass
+class BEHAVIOR_CONFIG:
+    collision: COLLISION
+
+    def to_dict(self) -> dict[str, Any]:
+        return dict(collision=self.collision)
+
+
 @dataclass
 class CHECK_CHARACTERS_CONFIG:
     extra_invalid: re.Pattern[str]
@@ -96,6 +111,7 @@ class CHECK_CONFIG:
 
 @dataclass
 class ConfigDict:
+    behavior: BEHAVIOR_CONFIG
     check: CHECK_CONFIG
     rename: list[RegexPattern]
     exclude: list[Path]

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
 import os
 import stat
+from collections.abc import Generator, Iterator
+from contextlib import AbstractContextManager
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Never, Self, cast, override
-from collections.abc import Generator, Iterator
+from typing import Any, Never, Self, cast, final, override
+
+
+type StrPath = str | os.PathLike[str]
 
 
 def permission_error(filename: str) -> Never:
@@ -74,6 +77,7 @@ class File:
         return cast(Directory, self._children_lookup[".."])
 
     def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
+        del follow_symlinks
         return os.stat_result((self.mode, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
     @property
@@ -101,7 +105,7 @@ class Directory(File):
         assert stat.S_ISDIR(self.mode)
 
         if children is None:
-            self._children_lookup = {}
+            self._children_lookup: dict[str, File] = {}
 
         else:
             self._children_lookup = {file.name: file for file in children}
@@ -136,6 +140,7 @@ class Directory(File):
         return [child for child in self.get_all(ignore_mode=ignore_mode) if child.name != ".."]
 
 
+@final
 class DirEntry:
     def __init__(self, file: File):
         self.file = file
@@ -152,9 +157,11 @@ class DirEntry:
         return 0
 
     def is_dir(self, *, follow_symlinks: bool = True) -> bool:
+        del follow_symlinks
         return isinstance(self.file, Directory)
 
     def is_file(self, *, follow_symlinks: bool = True) -> bool:
+        del follow_symlinks
         return not isinstance(self.file, Directory)
 
     def is_symlink(self) -> bool:
@@ -170,7 +177,8 @@ class DirEntry:
         return False
 
 
-class ScandirIterator(Iterator[DirEntry], AbstractContextManager):
+@final
+class ScandirIterator(Iterator[DirEntry], AbstractContextManager):  # pyright: ignore[reportMissingTypeArgument]
     def __init__(self, file: Directory) -> None:
         self.file = file
         self.it = None
@@ -178,6 +186,7 @@ class ScandirIterator(Iterator[DirEntry], AbstractContextManager):
         if not self.file.mode & stat.S_IRUSR:
             permission_error(self.file.absolute_path)
 
+    @override
     def __enter__(self) -> Self:
         self.it = iter(self.file.list_children())
         return super().__enter__()
@@ -188,7 +197,7 @@ class ScandirIterator(Iterator[DirEntry], AbstractContextManager):
         return DirEntry(next(self.it))
 
     @override
-    def __exit__(
+    def __exit__(  # pyright: ignore[reportMissingSuperCall]
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> bool | None:
         self.it = None
@@ -206,6 +215,7 @@ def _set_parent(dir: Directory) -> None:
             _set_parent(file)
 
 
+@final
 class FileSystem:
     def __init__(self, files: list[File], mode: int = 0o777) -> None:
         self.root = FileSystem.D("/", files, mode=mode)
@@ -214,6 +224,7 @@ class FileSystem:
         self.root._set_parent(self.root)
         _set_parent(self.root)
 
+    @override
     def __repr__(self) -> str:
         return "Permissions\tName\n" + repr(self.root)
 
@@ -249,10 +260,11 @@ class FileSystem:
             not_a_directory(destination.absolute_path)
 
         source = self.get(src_path)
-        source.parent.delete(source.name)
+        destination.set(dst_path.name, source)
 
+        # /!\ steps above may raise exceptions, perform actual renaming after
         source.name = dst_path.name
-        destination.set(source.name, source)
+        source.parent.delete(source.name)
 
     def get(self, at_path: PathMock) -> File:
         path_parts = at_path.parts
@@ -269,13 +281,15 @@ class PathMock(Path):
     def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         return object.__new__(cls)
 
-    def __init__(self, *args: str, file_system: FileSystem) -> None:
-        self._raw_paths = args
-        self.fs = file_system
+    def __init__(self, *args: StrPath, file_system: FileSystem) -> None:  # pyright: ignore[reportMissingSuperCall]
+        self._raw_paths: tuple[StrPath, ...] = args
+        self.fs: FileSystem = file_system
 
+    @override
     def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
         return self.fs.get(self).stat(follow_symlinks=follow_symlinks)
 
+    @override
     def iterdir(self) -> Generator[Self, None, None]:
         for file in self.fs.listdir(self):
             yield self._make_child_relpath(file.name)  # pyright: ignore[reportAttributeAccessIssue]
@@ -283,10 +297,12 @@ class PathMock(Path):
     def _scandir(self) -> ScandirIterator:
         return self.fs.scandir(self)
 
-    def with_segments(self, *pathsegments) -> PathMock:
+    @override
+    def with_segments(self, *pathsegments: StrPath) -> PathMock:
         return PathMock(*pathsegments, file_system=self.fs)
 
-    def rename(self, target: str | os.PathLike) -> PathMock:
+    @override
+    def rename(self, target: str | os.PathLike[str]) -> PathMock:
         target = self.with_segments(target)
 
         self.fs.rename(self, target)

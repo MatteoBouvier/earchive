@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from earchive.commands.check.config import Config
+from earchive.commands.check.config.names import COLLISION
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import (
     Check,
@@ -54,9 +55,27 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
                     for match in matches:
                         new_stem[match.start() : match.start() + len(bytearray(match.group(0), "utf-8"))] = repl
 
-                    new_path = (path.parent / new_stem.decode()).with_suffix(path.suffix)
-                    path.rename(new_path)
+                    new_path = path.with_stem(new_stem.decode())
 
+                    if new_path.exists():
+                        if config.behavior.collision is COLLISION.SKIP:
+                            yield invalid_data
+                            continue
+
+                        # add `(<nb>)` to file name
+                        next_nb = (
+                            max(
+                                [
+                                    int(g.stem.split("(")[-1][:-1])
+                                    for g in path.parent.glob(path.stem + "(*)" + path.suffix)
+                                ]
+                                + [0]
+                            )
+                            + 1
+                        )
+                        new_path = new_path.with_stem(f"{new_path.stem}({next_nb})")
+
+                    path.rename(new_path)
                     yield PathCharactersReplaceDiagnostic(path, new_path, matches=matches)
 
                 case _:
