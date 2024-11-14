@@ -1,14 +1,21 @@
-from typing import Literal
+from enum import Enum
+from typing import Literal, final
 
 from rich.console import Console
 from rich.highlighter import RegexHighlighter
 from rich.text import Text
 from rich.theme import Theme
 
+from earchive.commands.check.config.names import ASCII, COLLISION
+from earchive.commands.check.names import Check
+from earchive.utils.fs import FS
+from earchive.utils.os import OS
 
+
+@final
 class DocHighlighter(RegexHighlighter):
     base_style = "doc."
-    highlights = [r"(?P<option>((?<!\w)[-\+]\w)|(--[\w-]+))", r"(?P<code_block>`.*?`)", r"(?P<argument><.+?>)"]
+    highlights = [r"(?P<option>((?<!\w)[-\+]\w+)|(--[\w-]+))", r"(?P<code_block>`.*?`)", r"(?P<argument><[\w\s]+?>)"]
 
 
 doc_theme = Theme({"doc.option": "bold green1", "doc.code_block": "italic cyan", "doc.argument": "underline"})
@@ -42,6 +49,10 @@ def _Link(text: str) -> Text:
     return Text(text, "bold blue")
 
 
+def _EnumList(enum: type[Enum]) -> str:
+    return f"[{'|'.join(m for m in enum.__members__ if m != "AUTO")}]"
+
+
 B, H, P = _SectionBody, _SectionHeader, _SectionParagraph
 
 
@@ -53,12 +64,15 @@ check_doc = Text.assemble(
         P("earchive check -h | --help"),
         P("earchive check --doc"),
         P(r"""earchive check [<filename>]
-                           [--fs <file system>]
                            [--destination <dest_path>]
                            [--config <config_path>]
+                           [--make-config]
+                           [-o <option>=<value>]
+                           [-O <behavior_option>=<value>]
                            [--output <format>]
+                           [--exclude <excluded_path> [--exclude <excluded_path> ...]]
                            [--fix]
-                           [--check-all | -A]
+                           [--all]
                            [-eEiIlL]
 """),
     ),
@@ -73,18 +87,65 @@ check_doc = Text.assemble(
         H("options"),
         P("-h or --help", "\n\t\tDisplay a short description of this command with a summary of its options.\n"),
         P("--doc\tDisplay the full command documentation.\n"),
-        P(
-            "--fs <file_system>",
-            "\n\t\tSelect the target file system for the checks. <file_system> can be [windows|auto].\n",
-            "\t\tWhen using 'auto', the '--destination' option should provide a path on a target file system : its type will be infered for <file system>.\n",
-        ),
+        # P(
+        #     "--fs <file_system>",
+        #     "\n\t\tSelect the target file system for the checks. <file_system> can be [windows|auto].\n",
+        #     "\t\tWhen using 'auto', the '--destination' option should provide a path on a target file system : its type will be infered for <file system>.\n",
+        # ),
         P(
             "--destination <dest_path>",
             "\n\t\tProvide a destination path to which <filename> would be copied.\n",
             "\t\t- The maximum path length is shortened by the length of <dest_path>\n",
-            "\t\t- The target <file_system> can be automatically infered.\n",
+            "\t\t- The target file system and operating system can be automatically infered.\n",
         ),
-        P("--config <config_path>", "\n\t\tProvide a", _Link("configuration"), "file.\n"),
+        P("--config <config_path>", "\n\t\tProvide a", _Link("configuration"), "TOML file.\n"),
+        P("--make-config", "\n\t\tPrint the current configuration as TOML format.\n"),
+        P(
+            "-o <option>=<value>",
+            "\n\t\tSet",
+            _Link("configuration"),
+            "option values from the cli.\n",
+            "\t\t<option>                            <value>                       description\n",
+            "\t\tos                                 ",
+            _EnumList(OS),
+            "              target operating system\n",
+            "\t\tfs                                 ",
+            _EnumList(FS),
+            " target file system\n",
+            "\t\tbase_path_length                    positive integer              path length offset (usually computed when using --destination: length of the destination path)\n",
+            "\t\tmax_path_length                     positive integer              maximum valid path length\n",
+            "\t\tmax_name_length                     positive integer              maximum valid file name length\n",
+            "\t\tcharacters:extra-invalid            characters                    characters that should be considered invalid, added to those defined by the target file system\n",
+            "\t\tcharacters:replacement              character(s)                  replacement for invalid characters\n",
+            "\t\tcharacters:ascii                   ",
+            _EnumList(ASCII),
+            "    restriction levels for characters to be considered as valid\n",
+            "\t\trename[-noaccent][-nocase]:pattern  replacement                   renaming rule, can be repeated for defining multiple rules\n",
+            "\n\t\tSee section",
+            _Link("renaming rules"),
+            "for details on using the `replace` option.\n",
+            "\t\tFor option `characters:ascii`, the following restrictions apply:\n",
+            "\t\t- STRICT   only letters, digits and underscores are valid\n",
+            "\t\t- PRINT    same as STRICT, with additional punctuation characters ",
+            r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~""",
+            "\n",
+            "\t\t- ACCENTS  same as PRINT, with additional accented letters\n",
+            "\t\t- NO       no restriction, all characters are allowed\n",
+        ),
+        P(
+            "-O <behavior_option>=<value>",
+            "\n\t\tSet behavior",
+            _Link("configuration"),
+            "option values from the cli. These options control the general behavior of the commad.\n",
+            "\t\t<option>                            <value>                       description\n",
+            "\t\tcollision                          ",
+            _EnumList(COLLISION),
+            "             how to treat file name collisions when renaming\n",
+            "\t\tdry-run                             boolean                       perform dry-run, not actually modifying file names\n",
+            "\n\t\tFor option `behavior:collision`, the following is done:\n",
+            "\t\t- SKIP       do not rename file\n",
+            "\t\t- INCREMENT  add `(<nb>)` to the end of the file name, where <nb> is the next smallest available number in the directory\n",
+        ),
         P(
             "--output <format>",
             "\n\t\tSelect an output <format. <format> can be [silent|cli|csv].\n",
@@ -94,16 +155,19 @@ check_doc = Text.assemble(
             "\t\tFor writing the csv output directly to a file, you can specify a path as 'csv=<path>'.\n",
         ),
         P(
-            "--fix\tFix invalid paths in <filename> to comply with rules on the target <file_system>.",
-            "\n\t\tFirst, invalid characters are replaced with a replacement character, _ (underscore) by default."
+            "--exclude <excluded_path>",
+            "\n\t\tPath in <filename> to ignore during checks. Can be repeated to define multiple ignored paths.\n",
+        ),
+        P(
+            "--fix\tFix invalid paths in <filename> to comply with rules on the target operating system and file system.",
+            "\n\t\tFirst, invalid characters are replaced with a replacement character, _ (underscore) by default.",
             "\n\t\tThen, files and directories are renamed according to rules defined in the",
             _Link("configuration"),
-            "file. If all checks are disabled, this is the only operation performed.",
+            ". If all checks are disabled, this is the only operation performed.",
             "\n\t\tFinally, empty directories are removed and path lengths are checked.\n",
         ),
         P(
-            "-A or --check-all",
-            "\n\t\tRun all available checks.\n",
+            "--all\tRun all available checks.\n",
         ),
         P("-e or --check-empty-dirs", "\n\t\tCheck for (or remove) empty directories recursively.\n"),
         P(
@@ -128,44 +192,46 @@ check_doc = Text.assemble(
     B(
         H("configuration"),
         P(
-            "Configuration options must be written to a file and passed through the -c option. The default configuration is :",
+            "Configuration options may be written to a TOML file and passed through the --config option. The default configuration is :",
         ),
         P(
             """
+[behavior]
+collision = "increment"
+dry_run = false
+
 [check]
-run = CHARACTERS LENGTH
-file_system = windows
+run = ["CHARACTERS", "LENGTH"]
 base_path_length = 0
 
 [check.characters]
-extra = ""
-replacement = _
-
-[file_systems.windows]
-special_characters = <>:/\\|?*
-max_path_length = 255
+extra_invalid = ""
+replacement = "_"
+ascii = "no"
 
 [rename]
 
 [exclude]
+
 """,
         ),
+        P("Section [behavior] allows to define general behavior options. See -O for details.\n"),
         P(
-            "Section [check] allows to define:\n"
-            "\t- 'run' : checks to perform, can one or more in [CHARACTERS|LENGTH|EMPTY].\n",
-            "\t- 'file_system' : a target file system.\n",
-            "\t- 'base_path_length' : in case <filename> needs to be copied to a directory, that directory's path length to subtract from the target file system's max path length.\n\n",
-            "\tThese values may be overridden by cli options '--fs', '--destination' and '-eEiIlLA' if specified.\n\n",
+            "Section [check] allows to define -o options\n",
+            "\t- 'run' : list of checks to perform, can be one or more in ",
+            _EnumList(Check),
+            "\n",
+            "\t- 'base_path_length' : in case <file name> needs to be copied to a directory, that directory's path length to subtract from the target file system's max path length\n",
+            "\t- 'operating_system' : a target operating system\n",
+            "\t- 'file_system' : a target file system\n",
+            "\t- 'max_path_length' : maximum path length\n",
+            "\t- 'max_name_length' : maximum file name length\n",
         ),
         P(
-            "Section [check.characters] allows to define:"
-            "\n\t- 'extra' : characters to consider invalid if found in file paths during -i checks.",
-            "\n\t- 'replacement' : a replacement string for invalid characters.\n\n",
-        ),
-        P(
-            "Sections [file_system.<FS>] allows to define, for an individual file system <FS>:"
-            "\n\t- 'special_characters' : characters to consider invalid if found in file paths during -i checks.",
-            "\n\t- 'max_path_leng' : the file system's max path length.\n\n",
+            "Section [check.characters] allows to define -o options relative to the CHARACTERS check\n",
+            "\t- 'extra_invalid' : characters to consider invalid if found in file paths during -i checks\n",
+            "\t- 'replacement' : replacement character(s) for invalid characters\n",
+            "\t- 'ascii' : restriction levels for valid characters\n",
         ),
         P(
             "Section [replace] allows to define renaming rules to apply to file paths (one rule per line).\n",

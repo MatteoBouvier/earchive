@@ -3,10 +3,10 @@ from pathlib import Path
 
 from earchive.commands.check.config.names import (
     ASCII,
-    COLLISION,
     BEHAVIOR_CONFIG,
     CHECK_CHARACTERS_CONFIG,
     CHECK_CONFIG,
+    COLLISION,
     ConfigDict,
 )
 from earchive.commands.check.names import Check

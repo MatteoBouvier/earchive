@@ -101,7 +101,6 @@ class CHECK_CONFIG:
     def to_dict(self) -> dict[str, Any]:
         return dict(
             run=self.run,
-            path=self.path,
             operating_system=self.operating_system,
             file_system=self.file_system,
             base_path_length=self.base_path_length,
