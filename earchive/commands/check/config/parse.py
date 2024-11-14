@@ -13,6 +13,7 @@ from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
 from earchive.commands.check.config.names import ASCII, COLLISION, HEADER, ConfigDict
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
+from earchive.commands.check.utils import path_len
 from earchive.utils.fs import FS, get_file_system
 from earchive.utils.os import OS, get_operating_system
 
@@ -149,7 +150,7 @@ def _update_config_from_cli(
                 raise err.os_error(str(e))
 
         if config.check.base_path_length < 0:
-            config.check.base_path_length = len(str(dest_path)) + 1
+            config.check.base_path_length = path_len(dest_path, config.check.operating_system) + 1
 
         if config.check.max_path_length < 0:
             config.check.max_path_length = os.pathconf(dest_path, "PC_PATH_MAX")

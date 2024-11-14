@@ -26,6 +26,7 @@ from earchive.commands.check.names import (
     PathLengthDiagnostic,
     PathRenameDiagnostic,
 )
+from earchive.commands.check.utils import path_len
 from earchive.utils.progress import Bar
 
 console = Console(force_terminal=True, legacy_windows=False)
@@ -155,7 +156,10 @@ class Grid:
 
                 case PathLengthDiagnostic(Path() as path):
                     repr_above, repr_under_list = _repr_too_long(
-                        path.name, len(str(path)), self.config.check.max_path_length, part="path"
+                        path.name,
+                        path_len(path, self.config.check.operating_system),
+                        self.config.check.max_path_length,
+                        part="path",
                     )
 
                 case PathFilenameLengthDiagnostic(Path() as path):
@@ -212,7 +216,9 @@ class Grid:
                     new_name = new_path.name
 
                 case PathLengthDiagnostic(Path() as path):
-                    reason = f"{len(str(path))} > {self.config.check.max_path_length}"
+                    reason = (
+                        f"{path_len(path, self.config.check.operating_system)} > {self.config.check.max_path_length}"
+                    )
                     new_name = ""
 
                 case PathFilenameLengthDiagnostic(Path() as path):

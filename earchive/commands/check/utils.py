@@ -2,6 +2,7 @@ import itertools as it
 from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
+import sys
 from typing import Any
 
 from earchive.commands.check.config import Config
@@ -15,6 +16,7 @@ from earchive.commands.check.names import (
     PathInvalidNameDiagnostic,
     PathLengthDiagnostic,
 )
+from earchive.utils.os import OS
 from earchive.utils.progress import Bar, NoBar
 
 
@@ -35,6 +37,17 @@ def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
 
     empty_dirs.add(path)
     return True
+
+
+def path_len(path: Path, os: OS) -> int:
+    """Get a Path's true length on a target operating system, even from another os"""
+    path_len = len(str(path))
+
+    if os is OS.WINDOWS and sys.platform != "win32":
+        # on UNIX platforms, account for windows' extra path elements : <DRIVE>:/<path><NUL> --> 4 less characters
+        path_len += 4
+
+    return path_len
 
 
 def check_valid_file(
@@ -58,7 +71,7 @@ def check_valid_file(
         if len(path.name) > config.check.max_name_length:
             yield PathFilenameLengthDiagnostic(path)
 
-        if len(str(path)) > config.check.max_path_length:
+        if path_len(path, config.check.operating_system) > config.check.max_path_length:
             yield PathLengthDiagnostic(path)
 
 
