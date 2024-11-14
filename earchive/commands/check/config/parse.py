@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+import sys
 from typing import Any, Callable, cast
 
 import tomllib
@@ -153,10 +154,20 @@ def _update_config_from_cli(
             config.check.base_path_length = path_len(dest_path, config.check.operating_system) + 1
 
         if config.check.max_path_length < 0:
-            config.check.max_path_length = os.pathconf(dest_path, "PC_PATH_MAX")
+            if sys.platform == "win32":
+                # cannot use pathconf to infer, use default value even if it might rarely be larger
+                config.check.max_path_length = 260
+
+            else:
+                config.check.max_path_length = os.pathconf(dest_path, "PC_PATH_MAX")
 
         if config.check.max_name_length < 0:
-            config.check.max_name_length = os.pathconf(dest_path, "PC_NAME_MAX")
+            if sys.platform == "win32":
+                # cannot use pathconf to infer, use default value even if it might rarely be different
+                config.check.max_name_length = 255
+
+            else:
+                config.check.max_name_length = os.pathconf(dest_path, "PC_NAME_MAX")
 
     else:
         if config.check.operating_system is OS.AUTO:

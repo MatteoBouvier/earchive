@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import sys
 
 from rich.console import Console
 from rich.rule import Rule
@@ -12,8 +13,8 @@ console = Console()
 
 def analyze_path(path: Path) -> None:
     attributes = dict(
-        max_path_length=os.pathconf(path, "PC_PATH_MAX"),
-        max_filename_length=os.pathconf(path, "PC_NAME_MAX"),
+        max_path_length="260?" if sys.platform == "win32" else os.pathconf(path, "PC_PATH_MAX"),
+        max_filename_length="255?" if sys.platform == "win32" else os.pathconf(path, "PC_NAME_MAX"),
         file_system=get_file_system(path),
         operating_system=get_operating_system(path),
     )
