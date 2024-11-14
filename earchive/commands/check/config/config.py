@@ -66,7 +66,9 @@ class Config:
         return Config(behavior=data.behavior, check=data.check, rename=data.rename, exclude=data.exclude)
 
     def to_dict(self) -> dict[str, Any]:
-        return dict(check=self.check.to_dict(), rename=self.rename, exclude=self.exclude)
+        return dict(
+            behavior=self.behavior.to_dict(), check=self.check.to_dict(), rename=self.rename, exclude=self.exclude
+        )
 
     @override
     def __repr__(self) -> str:
