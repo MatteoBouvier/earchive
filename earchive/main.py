@@ -1,19 +1,20 @@
+# pyright: reportDeprecated=false
+
 import sys
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, final, override
 
 import click
 import typer
-from rich import print as rprint
-from rich.text import Text
 
 import earchive.errors as err
-from earchive.check import FS, Check, OutputKind, check_path, parse_config
-from earchive.cli import show_tree
-from earchive.compare import compare as compare_paths
-from earchive.copy import copy_structure
+from earchive.commands.analyze import analyze_path
+from earchive.commands.check import Check, OutputKind, check_path, parse_cli_config, parse_config
+from earchive.commands.cli import show_tree
+from earchive.commands.compare import compare as compare_paths
+from earchive.commands.copy import copy_structure
 from earchive.doc import print_doc
-from earchive.tree import Node
+from earchive.utils.tree import Node
 
 app = typer.Typer(
     help="Collection of helper tools for digital archives management.",
@@ -78,33 +79,40 @@ def _parse_checks(
     )
 
 
+@final
 class _parse_OutputKind(click.ParamType):
     name = f"[{'|'.join(OutputKind.__members__)}]"
 
+    @override
     def convert(self, value: str, param: Any, ctx: click.Context | None) -> OutputKind:
         kind = OutputKind(value)
         if kind.path_ is not None and Path(kind.path_).exists():
             with err.raise_typer():
-                raise err.os_error(f"Output file '{kind.path_}' already exists")
+                raise err.cannot_overwrite(kind.path_)
 
         return kind
 
 
-@app.command()
+@app.command(no_args_is_help=True)
 def check(
-    path: Annotated[Path, typer.Argument(exists=True, help="Path to check")] = Path("."),
+    path: Annotated[Path, typer.Argument(exists=True, show_default=False, help="Path to check")],
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
-    fs: Annotated[FS, typer.Option(help="Target file system")] = FS.AUTO,
+    fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
+    check_all: Annotated[bool, typer.Option("--all", help="Perform all available checks")] = False,
+    options: Annotated[list[str], typer.Option("-o", help="Configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     destination: Annotated[
         Optional[Path],
         typer.Option(
             exists=True,
             file_okay=False,
             writable=True,
-            help="Destination path where files would be copied to.",
+            help="Destination path where files would be copied to",
         ),
     ] = None,
     config: Annotated[Optional[Path], typer.Option(exists=True, dir_okay=False, help="Path to config file")] = None,
+    make_config: Annotated[
+        bool, typer.Option("--make-config", show_default=False, help="Create a config file from supplied options")
+    ] = False,
     output: Annotated[
         OutputKind,
         typer.Option(
@@ -112,12 +120,11 @@ def check(
             help="Output format. For csv, an output file can be specified with 'csv=path/to/output.csv'",
         ),
     ] = OutputKind.cli,
-    fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
-    check_all: Annotated[bool, typer.Option("--check-all", "-A", help="Perform all available checks")] = False,
+    exclude: Annotated[list[Path], typer.Option(help="Exclude path from cheked paths")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     check_empty_dirs: Annotated[
         Optional[bool],
         typer.Option(
-            "--check-empty-dirs/--no-check-empty-dirs",
+            "--empty-dirs/--no-empty-dirs",
             "-e/-E",
             help="Perform check for empty directories",
             show_default=False,
@@ -126,7 +133,7 @@ def check(
     check_invalid_characters: Annotated[
         Optional[bool],
         typer.Option(
-            "--check-invalid-characters/--no-check-invalid-characters",
+            "--invalid-characters/--no-invalid-characters",
             "-i/-I",
             help="Perform check for invalid characters",
             show_default=False,
@@ -135,7 +142,7 @@ def check(
     check_path_length: Annotated[
         Optional[bool],
         typer.Option(
-            "--check-path-length/--no-check-path-length",
+            "--path-length/--no-path-length",
             "-l/-L",
             help="Perform check for path length",
             show_default=False,
@@ -147,14 +154,28 @@ def check(
         print_doc("check")
         raise typer.Exit()
 
-    checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, check_all)
     with err.raise_typer():
-        cfg = parse_config(config, fs, destination, checks)
+        cli_config = parse_cli_config(options)
+        checks = _parse_checks(check_empty_dirs, check_invalid_characters, check_path_length, check_all)
+        cfg = parse_config(config, cli_config, path, destination, checks, exclude)
 
-    nb_issues = check_path(path, cfg, output=output, fix=fix)
+    if make_config:
+        print(cfg)
+        raise typer.Exit()
+
+    with err.raise_typer():
+        nb_issues = check_path(cfg, output=output, fix=fix)
 
     if nb_issues:
         raise typer.Exit(code=err.FIX_FAILED if fix else err.CHECK_FAILED)
+
+
+@app.command()
+def analyze(
+    path: Annotated[Path, typer.Argument(exists=True, show_default=False, help="Path to analyze")],
+) -> None:
+    r""":mag: [blue]Analyze[/blue] a file or directory and list attributes."""
+    analyze_path(path)
 
 
 @app.command()
@@ -171,7 +192,7 @@ def copy(
     ],
 ) -> None:
     r""":books: [blue]Copy[/blue] a directory structure (file contents are not copied)."""
-    if not dst.exists:
+    if not dst.exists():
         dst.mkdir(parents=True)
 
     copy_structure(src, dst)

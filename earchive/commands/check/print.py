@@ -3,15 +3,30 @@ from __future__ import annotations
 import itertools as it
 import re
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal, NamedTuple, final
 
-from rich.console import Console, RenderResult
+from rich.console import Console, RenderableType, RenderResult
+from rich.segment import Segment
 from rich.text import Text
 
-from earchive.check.names import Action, Check, OutputKind, PathDiagnostic
-from earchive.check.config import RegexPattern, Config
-from earchive.progress import Bar
+from earchive.commands.check.config import Config
+from earchive.commands.check.config.substitution import RegexPattern
+from earchive.commands.check.names import (
+    Diagnostic,
+    OutputKind,
+    PathCharactersDiagnostic,
+    PathCharactersReplaceDiagnostic,
+    PathDiagnostic,
+    PathEmptyDiagnostic,
+    PathErrorDiagnostic,
+    PathFilenameLengthDiagnostic,
+    PathInvalidNameDiagnostic,
+    PathLengthDiagnostic,
+    PathRenameDiagnostic,
+)
+from earchive.utils.progress import Bar
 
 console = Console(force_terminal=True, legacy_windows=False)
 
@@ -71,19 +86,27 @@ def _repr_renames(
     return Text.assemble(*txt_path), [Text.assemble(*txt_under, style=RENAME_STYLE) for txt_under in txt_under_list]
 
 
-def _repr_too_long(file_name: str, path_len: int, max_len: int) -> tuple[Text, list[Text]]:
+def _repr_too_long(
+    file_name: str, path_len: int, max_len: int, part: Literal["path", "filename"]
+) -> tuple[Text, list[Text]]:
     no_color_len = max(0, len(file_name) - path_len + max_len)
 
     txt_path = ("/", file_name[:no_color_len], (file_name[no_color_len:], ERROR_STYLE))
     txt_under = (
         " ",
         " " * no_color_len,
-        ("~" * (path_len - max_len) + f" path is too long ({path_len} > {max_len})", ERROR_STYLE),
+        ("~" * min(len(file_name), path_len - max_len) + f" {part} is too long ({path_len} > {max_len})", ERROR_STYLE),
     )
 
     return Text.assemble(*txt_path), [Text.assemble(*txt_under)]
 
 
+class CheckRepr(NamedTuple):
+    string: str
+    desc: str
+
+
+@final
 class Grid:
     def __init__(self, config: Config, kind: OutputKind, mode: Literal["check", "fix"]) -> None:
         self.config = config
@@ -92,6 +115,17 @@ class Grid:
 
         self.rows: list[PathDiagnostic] = []
         self.console_width = shutil.get_terminal_size().columns
+
+        self.diagnostic_repr = {
+            Diagnostic.CHARACTERS: CheckRepr("BADCHAR", "Found invalid characters"),
+            Diagnostic.INVALID: CheckRepr("INVALID", "File name is invalid or reserved"),
+            Diagnostic.RENAME_INVALID: CheckRepr("RENAME", "Matched invalid characters"),
+            Diagnostic.RENAME_MATCH: CheckRepr("RENAME", "Matched renaming pattern"),
+            Diagnostic.LENGTH_PATH: CheckRepr("LENGTH", "Path is too long"),
+            Diagnostic.LENGTH_NAME: CheckRepr("LENGTH", "File name is too long"),
+            Diagnostic.EMPTY: CheckRepr("EMPTY", "Directory contains no files"),
+            Diagnostic.ERROR: CheckRepr("ERROR", "Encountered error while cheking"),
+        }
 
     def _clamp(self, txt: Text, max_width: int) -> tuple[Text, int]:
         if len(txt) > max_width:
@@ -103,27 +137,32 @@ class Grid:
         return txt, len(txt)
 
     def _cli_repr(self) -> RenderResult:
-        diagnostic_repr = {
-            Check.CHARACTERS: "BADCHAR ",
-            Check.LENGTH: "LENGTH  ",
-            Check.EMPTY: "EMPTY   ",
-            Action.ERROR: "ERROR   ",
-            Action.RENAME: "RENAME  ",
-        }
-
         for row in self.rows:
             match row:
-                case PathDiagnostic(Check.CHARACTERS, path, matches=list(matches), new_path=new_path):
+                case PathCharactersReplaceDiagnostic(Path() as path, Path() as new_path, matches=list(matches)):
                     repr_above, repr_under_list = _repr_matches(path.name, matches, new_path)
 
-                case PathDiagnostic(Action.RENAME, path, patterns=list(patterns), new_path=Path() as new_path):
+                case PathCharactersDiagnostic(Path() as path, matches=list(matches)):
+                    repr_above, repr_under_list = _repr_matches(path.name, matches, None)
+
+                case PathInvalidNameDiagnostic(Path() as path):
+                    repr_above = Text.assemble("/", (f"{path.name} ~ name is invalid", ERROR_STYLE))
+                    repr_under_list = []
+
+                case PathRenameDiagnostic(Path() as path, Path() as new_path, patterns=list(patterns)):
                     repr_above, repr_under_list = _repr_renames(path.name, patterns, new_path)
 
-                case PathDiagnostic(Check.LENGTH, path):
-                    max_path_len = self.config.get_max_path_length()
-                    repr_above, repr_under_list = _repr_too_long(path.name, len(str(path)), max_path_len)
+                case PathLengthDiagnostic(Path() as path):
+                    repr_above, repr_under_list = _repr_too_long(
+                        path.name, len(str(path)), self.config.check.max_path_length, part="path"
+                    )
 
-                case PathDiagnostic(Check.EMPTY, path):
+                case PathFilenameLengthDiagnostic(Path() as path):
+                    repr_above, repr_under_list = _repr_too_long(
+                        path.name, len(path.name), self.config.check.max_name_length, part="filename"
+                    )
+
+                case PathEmptyDiagnostic(path):
                     error_repr = f"{path.name} ~ directory contains no files"
                     repr_above = Text.assemble("/", (error_repr, ERROR_STYLE))
                     if self.mode == "fix":
@@ -131,7 +170,7 @@ class Grid:
 
                     repr_under_list = []
 
-                case PathDiagnostic(Action.ERROR, path, error=OSError() as err):
+                case PathErrorDiagnostic(Path() as path, error=OSError() as err):
                     repr_above = f"{path.name} ~ {err.errno}, {err.strerror}"
                     repr_under_list = []
 
@@ -142,12 +181,11 @@ class Grid:
             path_max_width = self.console_width - 9 - right_offset
             root, left_offset = self._clamp(Text(str(path.parent)), path_max_width)
 
-            yield Text.assemble(diagnostic_repr[row.kind], root, repr_above)
+            yield Text.assemble("{:<8}".format(self.diagnostic_repr[row.kind].string), root, repr_above)
             for repr_under in repr_under_list:
                 yield Text.assemble("        ", " " * left_offset, repr_under)
 
     def _csv_repr(self) -> RenderResult:
-        max_path_len = self.config.get_max_path_length()
         header = "Kind;Description;Reason;File_path;File_name"
         if self.mode == "fix":
             header += ";File_new_name"
@@ -156,43 +194,50 @@ class Grid:
 
         for row in self.rows:
             match row:
-                case PathDiagnostic(Check.CHARACTERS, path, matches=list(matches), new_path=new_path):
-                    repr_matches = ",".join((f"{match.group()}@{match.start()}" for match in matches))
-                    text = f"BADCHAR;Found invalid characters;{repr_matches};{str(path.parent)};{path.name}"
+                case PathCharactersReplaceDiagnostic(Path() as path, Path() as new_path, matches=list(matches)):
+                    reason = ",".join((f"{match.group()}@{match.start()}" for match in matches))
+                    new_name = new_path.name
 
-                    if new_path is not None:
-                        text += f";{new_path.name}"
+                case PathCharactersDiagnostic(Path() as path, matches=list(matches)):
+                    reason = ",".join((f"{match.group()}@{match.start()}" for match in matches))
+                    new_name = ""
 
-                case PathDiagnostic(Action.RENAME, path, patterns=list(patterns), new_path=Path() as new_name):
-                    repr_matches = ",".join((_repr_regex_pattern(pattern) for (pattern, _) in patterns))
-                    text = (
-                        f"RENAME;Matched renaming pattern;{repr_matches};{str(path.parent)};{path.name};{new_name.name}"
-                    )
+                case PathInvalidNameDiagnostic(Path() as path):
+                    reason = ""
+                    new_name = ""
 
-                case PathDiagnostic(Check.LENGTH, path):
-                    text = f"LENGTH;Path is too long;{len(str(path))} > {max_path_len};{str(path.parent)};{path.name}"
+                case PathRenameDiagnostic(Path() as path, Path() as new_path, patterns=list(patterns)):
+                    reason = ",".join((_repr_regex_pattern(pattern) for (pattern, _) in patterns))
+                    new_name = new_path.name
 
-                    if self.mode == "fix":
-                        text += ";"
+                case PathLengthDiagnostic(Path() as path):
+                    reason = f"{len(str(path))} > {self.config.check.max_path_length}"
+                    new_name = ""
 
-                case PathDiagnostic(Check.EMPTY, path):
-                    text = f"EMPTY;Directory contains no files;;{str(path.parent)};{path.name}"
+                case PathFilenameLengthDiagnostic(Path() as path):
+                    reason = f"{len(path.name)} > {self.config.check.max_name_length}"
+                    new_name = ""
 
-                    if self.mode == "fix":
-                        text += ";DELETED"
+                case PathEmptyDiagnostic(path):
+                    reason = ""
+                    new_name = "DELETED" if self.mode == "fix" else ""
 
-                case PathDiagnostic(Action.ERROR, path, error=OSError() as err):
-                    text = f"ERROR;{err.errno};{err.strerror};{str(path.parent)};{path.name}"
-
-                    if self.mode == "fix":
-                        text += ";"
+                case PathErrorDiagnostic(Path() as path, error=OSError() as err):
+                    reason = f"{err.errno}:{err.strerror}"
+                    new_name = ""
 
                 case _:
                     raise RuntimeError("Found invalid kind", row)
 
-            yield text
+            dia_repr = self.diagnostic_repr[row.kind]
+            row_text = f"{dia_repr.string};{dia_repr.desc};{reason};{str(row.path.parent)};{row.path.name}"
 
-    def print(self, **kwargs: Any) -> None:
+            if self.mode == "fix":
+                row_text += f";{new_name}"
+
+            yield row_text
+
+    def print(self) -> None:
         if self.kind == OutputKind.cli:
             console.print(*it.islice(self._cli_repr(), 10_000), sep="\n")
 
@@ -201,10 +246,14 @@ class Grid:
 
         elif self.kind == OutputKind.csv:
             if self.kind.path_ is None:
+                console.no_color = True
                 console.print(*self._csv_repr(), sep="\n")
+                console.no_color = False
 
             else:
-                progress = Bar(description="saving ...", multiplier=100, total=len(self.rows), percent=True)
+                progress: Bar[Iterable[RenderableType | Segment]] = Bar(
+                    description="saving ...", multiplier=100, total=len(self.rows), percent=True
+                )
                 with open(self.kind.path_, mode="w") as file:
                     for lines in progress(it.batched(self._csv_repr(), n=100)):
                         file.writelines("%s\n" % line for line in lines)

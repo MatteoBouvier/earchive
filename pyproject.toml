@@ -49,3 +49,6 @@ exclude = [
 
 [tool.pyright]
 include = ["earchive", "tests"]
+
+reportAny = false
+reportUnusedCallResult = false

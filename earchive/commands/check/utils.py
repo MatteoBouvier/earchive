@@ -1,11 +1,21 @@
 import itertools as it
+from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
-from earchive.check.config import Config
-from earchive.check.names import Action, Check, PathDiagnostic
-from earchive.progress import Bar, NoBar
+from earchive.commands.check.config import Config
+from earchive.commands.check.names import (
+    Check,
+    PathCharactersDiagnostic,
+    PathDiagnostic,
+    PathEmptyDiagnostic,
+    PathErrorDiagnostic,
+    PathFilenameLengthDiagnostic,
+    PathInvalidNameDiagnostic,
+    PathLengthDiagnostic,
+)
+from earchive.utils.progress import Bar, NoBar
 
 
 def plural(value: int) -> str:
@@ -35,17 +45,21 @@ def check_valid_file(
 
     if Check.EMPTY in checks:
         if path.is_dir() and _is_empty(path, empty_dirs):
-            yield PathDiagnostic(Check.EMPTY, path)
+            yield PathEmptyDiagnostic(path)
 
     if Check.CHARACTERS in checks:
-        match = list(config.invalid_characters.finditer(path.stem))
+        if len(match := config.invalid_characters.finditer(path.stem)):
+            yield PathCharactersDiagnostic(path, matches=match)
 
-        if len(match):
-            yield PathDiagnostic(Check.CHARACTERS, path, match)
+        if config.invalid_names.match(path.stem):
+            yield PathInvalidNameDiagnostic(path)
 
     if Check.LENGTH in checks:
-        if len(str(path)) > config.get_max_path_length():
-            yield PathDiagnostic(Check.LENGTH, path)
+        if len(path.name) > config.check.max_name_length:
+            yield PathFilenameLengthDiagnostic(path)
+
+        if len(str(path)) > config.check.max_path_length:
+            yield PathLengthDiagnostic(path)
 
 
 def walk_all(
@@ -58,13 +72,10 @@ def walk_all(
         errors = []
 
     def yield_root() -> Generator[tuple[Path, list[str], list[str]], None, None]:
-        try:
-            yield path.parent, [str(path)] if path.is_dir() else [], [str(path)] if path.is_file() else []
-        except OSError:
-            errors.append(PathDiagnostic(Action.ERROR, path))
+        yield path.parent, [str(path)] if path.is_dir() else [], [str(path)] if path.is_file() else []
 
     def on_error(err: OSError) -> None:
-        errors.append(PathDiagnostic(Action.ERROR, Path(err.filename), error=err))
+        errors.append(PathErrorDiagnostic(Path(err.filename), error=err))
 
     def yield_children() -> Generator[tuple[Path, list[str], list[str]], None, None]:
         if path.is_dir():
@@ -78,15 +89,15 @@ def walk_all(
 
 
 def invalid_paths(
-    path: Path, config: Config, checks: Check | None = None, progress: Bar[Any] = NoBar
+    config: Config, checks: Check | None = None, progress: Bar[Any] = NoBar
 ) -> Generator[PathDiagnostic, None, None]:
-    empty_dirs = set()
-    errors = []
+    empty_dirs: set[Path] = set()
+    errors: list[PathDiagnostic] = []
 
     if checks is None:
         checks = config.check.run
 
-    for root, dirs, files in progress(walk_all(path, errors, top_down=False)):
+    for root, dirs, files in progress(walk_all(config.check.path, errors, top_down=False)):
         for file in files + dirs:
             yield from check_valid_file(root / file, config, checks, empty_dirs)
 

@@ -1,12 +1,12 @@
 from __future__ import annotations
-from collections.abc import Generator
-from typing import Iterator
 
-from pathlib import Path
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass, field
 from itertools import zip_longest
-from natsort import natsorted
+from pathlib import Path
+from typing import override
 
+from natsort import natsorted
 from rich import print
 
 
@@ -20,6 +20,7 @@ class Node:
     child_nodes: list[Node] = field(default_factory=list)
 
     # region magic methods
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Node):
             return False

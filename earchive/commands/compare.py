@@ -1,9 +1,10 @@
 import sys
+
 from rich import print
 from rich.tree import Tree
 
-from earchive.tree import Node
-from earchive.cli import node_link
+from earchive.commands.cli import node_link
+from earchive.utils.tree import Node
 
 
 def _index(node: Node, others: list[Node]) -> int:

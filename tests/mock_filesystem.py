@@ -5,7 +5,9 @@ import os
 import stat
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import Any, Generator, Iterator, Never, Self, cast
+from types import TracebackType
+from typing import Any, Never, Self, cast, override
+from collections.abc import Generator, Iterator
 
 
 def permission_error(filename: str) -> Never:
@@ -46,6 +48,7 @@ class File:
 
         self._children_lookup = {}
 
+    @override
     def __repr__(self) -> str:
         return f"{stat.filemode(self.mode)} \t{self.absolute_path}"
 
@@ -103,6 +106,7 @@ class Directory(File):
         else:
             self._children_lookup = {file.name: file for file in children}
 
+    @override
     def __repr__(self) -> str:
         dir_repr = super().__repr__()
         for file in self.list_children():
@@ -176,14 +180,19 @@ class ScandirIterator(Iterator[DirEntry], AbstractContextManager):
 
     def __enter__(self) -> Self:
         self.it = iter(self.file.list_children())
-        return self
+        return super().__enter__()
 
+    @override
     def __next__(self) -> DirEntry:
         assert self.it is not None
         return DirEntry(next(self.it))
 
-    def __exit__(self, *args) -> None:
+    @override
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+    ) -> bool | None:
         self.it = None
+        return
 
     def close(self) -> None:
         pass

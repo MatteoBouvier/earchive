@@ -1,7 +1,8 @@
 import sys
 import time
+from collections.abc import Generator, Iterable
 from itertools import cycle
-from typing import Generator, Iterable, Self
+from typing import Any, Self, override
 
 
 class Bar[T]:
@@ -15,19 +16,19 @@ class Bar[T]:
         miniters: int = 10,
         mininterval: float = 0.2,
     ) -> None:
-        self.iterable = iterable
-        self.counter = 0
+        self.iterable: Iterable[T] | None = iterable
+        self.counter: int = 0
 
-        self.description = description
-        self.total = total
-        self.multiplier = multiplier
-        self.percent = percent
+        self.description: str = description
+        self.total: int | None = total
+        self.multiplier: int = multiplier
+        self.percent: bool = percent
         if self.percent and not self.total:
             raise ValueError("Cannot use percentage if total is not given")
 
-        self.miniters = miniters
-        self.mininterval = mininterval
-        self.last_len = 0
+        self.miniters: int = miniters
+        self.mininterval: float = mininterval
+        self.last_len: int = 0
 
     def __call__(self, iterable: Iterable[T]) -> Self:
         self.iterable = iterable
@@ -88,7 +89,8 @@ class Bar[T]:
         sys.stderr.flush()
 
 
-class _NoBar[T](Bar):
+class _NoBar[T](Bar[T]):
+    @override
     def __iter__(self) -> Generator[T, None, None]:
         if self.iterable is None:
             raise ValueError("No iterable was passed")
@@ -96,4 +98,4 @@ class _NoBar[T](Bar):
         yield from self.iterable
 
 
-NoBar = _NoBar()
+NoBar: _NoBar[Any] = _NoBar()

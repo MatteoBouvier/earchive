@@ -870,5 +870,5 @@ dev = ["mypy", "pre-commit", "pytest", "ruff", "scalene", "vulture"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.12"
-content-hash = "87d168eefe88437f5b2886948466e19942338e256ec083c4021415b54757a71b"
+python-versions = ">3.11"
+content-hash = "aa61fe297ff1c30895a828facf905fcb57accf24cbf493cf9dc8a005a7fed0c4"

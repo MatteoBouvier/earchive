@@ -1,13 +1,24 @@
-import re
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
-from earchive.check.names import Action, Check, CheckRepr, OutputKind, PathDiagnostic
-from earchive.check.config import Config, RegexPattern
-from earchive.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
-from earchive.check.utils import invalid_paths, plural, walk_all
-from earchive.progress import Bar
+from earchive.commands.check.config import Config
+from earchive.commands.check.config.substitution import RegexPattern
+from earchive.commands.check.names import (
+    Check,
+    CheckRepr,
+    OutputKind,
+    PathCharactersDiagnostic,
+    PathCharactersReplaceDiagnostic,
+    PathDiagnostic,
+    PathEmptyDiagnostic,
+    PathLengthDiagnostic,
+    PathRenameDiagnostic,
+)
+from earchive.commands.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
+from earchive.commands.check.utils import invalid_paths, plural, walk_all
+from earchive.utils.progress import Bar
 
 
 @dataclass
@@ -27,29 +38,32 @@ def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
 
     if len(matched_patterns):
         new_path = path.rename(path.parent / new_name)
-        return PathDiagnostic(Action.RENAME, path, patterns=matched_patterns, new_path=new_path)
+        return PathRenameDiagnostic(path, new_path, patterns=matched_patterns)
 
 
-def _rename(dir: Path, config: Config, counter: Counter) -> Generator[PathDiagnostic, None, None]:
+def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, None]:
     # First pass : remove special characters
     if Check.CHARACTERS in config.check.run:
-        for invalid_data in invalid_paths(dir, config, checks=Check.CHARACTERS, progress=Bar()):
+        repl = bytearray(config.check.characters.replacement, encoding="utf-8")
+
+        for invalid_data in invalid_paths(config, checks=Check.CHARACTERS, progress=Bar()):
             match invalid_data:
-                case PathDiagnostic(Check.CHARACTERS, path, matches):
-                    new_path = path.rename(
-                        (
-                            path.parent
-                            / re.sub(
-                                config.invalid_characters,
-                                config.check.characters.replacement,
-                                path.stem,
-                            )
-                        ).with_suffix(path.suffix)
-                    )
-                    yield PathDiagnostic(Check.CHARACTERS, path, matches=matches, new_path=new_path)
+                case PathCharactersDiagnostic(Path() as path, matches=matches):
+                    new_stem = bytearray(path.stem, encoding="utf-8")
+
+                    for match in matches:
+                        new_stem[match.start() : match.start() + len(bytearray(match.group(0), "utf-8"))] = repl
+
+                    new_path = (path.parent / new_stem.decode()).with_suffix(path.suffix)
+                    path.rename(new_path)
+
+                    yield PathCharactersReplaceDiagnostic(path, new_path, matches=matches)
+
+                case _:
+                    pass
 
     # second pass : replace patterns defined in the `cfg` file
-    for root, dirs, files in walk_all(dir, top_down=False):
+    for root, dirs, files in walk_all(config.check.path, top_down=False):
         for file in files + dirs:
             rename_data = _rename_if_match(root / file, config)
 
@@ -59,20 +73,22 @@ def _rename(dir: Path, config: Config, counter: Counter) -> Generator[PathDiagno
     # thrid pass : check for paths still too long / remove empty directories
     remaining_checks = config.check.run ^ Check.CHARACTERS
     if remaining_checks:
-        for invalid_data in invalid_paths(dir, config, checks=remaining_checks, progress=Bar()):
+        for invalid_data in invalid_paths(config, checks=remaining_checks, progress=Bar()):
             match invalid_data:
-                case PathDiagnostic(Check.EMPTY, path):
+                case PathEmptyDiagnostic(path) as diagnostic:
                     path.rmdir()
-                    yield PathDiagnostic(Check.EMPTY, path)
+                    yield diagnostic
 
-                case PathDiagnostic(Check.LENGTH, path):
+                case PathLengthDiagnostic(path) as diagnostic:
                     console.print(f"Path is too long ({len(str(path))}) : {path}", style=ERROR_STYLE)
                     counter.value += 1
-                    yield PathDiagnostic(Check.LENGTH, path)
+                    yield diagnostic
+
+                case _:
+                    pass
 
 
 def check_path(
-    dir: Path,
     config: Config,
     output: OutputKind = OutputKind.cli,
     fix: bool = False,
@@ -80,22 +96,20 @@ def check_path(
     if not config.check.run and not fix:
         return 0
 
-    dir = dir.resolve(strict=True)
-
     counter = Counter()
     progress: Bar[Any] = Bar("processed files ...")
     messages = Grid(config, kind=output, mode="fix" if fix else "check")
 
     if fix:
-        for message in _rename(dir, config, counter):
+        for message in rename(config, counter):
             messages.add_row(message)
 
     else:
-        for invalid_data in invalid_paths(dir, config, progress=progress):
+        for invalid_data in invalid_paths(config, progress=progress):
             messages.add_row(invalid_data)
             counter.value += 1
 
-    messages.print(no_wrap=True)
+    messages.print()
 
     if fix:
         if output == OutputKind.cli:

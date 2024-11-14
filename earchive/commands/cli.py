@@ -1,9 +1,10 @@
 from pathlib import Path
+
+from rich.markup import escape
 from rich.text import Text
 from rich.tree import Tree
-from rich.markup import escape
 
-from earchive.tree import Node
+from earchive.utils.tree import Node
 
 FIlE_ICON = "📄"
 FOLDER_ICON = "📂"

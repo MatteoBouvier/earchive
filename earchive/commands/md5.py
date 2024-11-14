@@ -1,7 +1,6 @@
 import hashlib
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 BUF_SIZE = 65536  # 64kb chunks
 
