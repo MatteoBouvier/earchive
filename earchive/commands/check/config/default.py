@@ -28,7 +28,7 @@ DEFAULT_CHECK_CHARACTERS = CHECK_CHARACTERS_CONFIG(
 
 def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
     return ConfigDict(
-        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT),
+        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT, dry_run=False),
         check=CHECK_CONFIG(
             run=DEFAULT_CHECK_RUN,
             path=check_path,

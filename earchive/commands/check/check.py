@@ -27,6 +27,23 @@ class Counter:
     value: int = 0
 
 
+def safe_rename(path: Path, target: Path, config: Config) -> bool:
+    if target.exists():
+        if config.behavior.collision is COLLISION.SKIP:
+            return False
+
+        # add `(<nb>)` to file name
+        next_nb = (
+            max([int(g.stem.split("(")[-1][:-1]) for g in path.parent.glob(path.stem + "(*)" + path.suffix)] + [0]) + 1
+        )
+        target = target.with_stem(f"{target.stem}({next_nb})")
+
+    if not config.behavior.dry_run:
+        path.rename(target)
+
+    return True
+
+
 def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
     new_name = str(path.name)
     matched_patterns: list[tuple[RegexPattern, str]] = []
@@ -37,8 +54,9 @@ def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
         if nsubs:
             matched_patterns.append((pattern, new_name))
 
-    if len(matched_patterns):
-        new_path = path.rename(path.parent / new_name)
+    new_path = path.parent / new_name
+
+    if len(matched_patterns) and safe_rename(path, new_path, config):
         return PathRenameDiagnostic(path, new_path, patterns=matched_patterns)
 
 
@@ -57,26 +75,11 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
 
                     new_path = path.with_stem(new_stem.decode())
 
-                    if new_path.exists():
-                        if config.behavior.collision is COLLISION.SKIP:
-                            yield invalid_data
-                            continue
+                    if safe_rename(path, new_path, config):
+                        yield PathCharactersReplaceDiagnostic(path, new_path, matches=matches)
 
-                        # add `(<nb>)` to file name
-                        next_nb = (
-                            max(
-                                [
-                                    int(g.stem.split("(")[-1][:-1])
-                                    for g in path.parent.glob(path.stem + "(*)" + path.suffix)
-                                ]
-                                + [0]
-                            )
-                            + 1
-                        )
-                        new_path = new_path.with_stem(f"{new_path.stem}({next_nb})")
-
-                    path.rename(new_path)
-                    yield PathCharactersReplaceDiagnostic(path, new_path, matches=matches)
+                    else:
+                        yield invalid_data
 
                 case _:
                     pass
@@ -95,7 +98,9 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
         for invalid_data in invalid_paths(config, checks=remaining_checks, progress=Bar()):
             match invalid_data:
                 case PathEmptyDiagnostic(path) as diagnostic:
-                    path.rmdir()
+                    if not config.behavior.dry_run:
+                        path.rmdir()
+
                     yield diagnostic
 
                 case PathLengthDiagnostic(path) as diagnostic:

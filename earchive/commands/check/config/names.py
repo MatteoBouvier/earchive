@@ -16,6 +16,7 @@ class HEADER(StrEnum):
     NO_HEADER = ""
     BEHAVIOR = auto()
     BEHAVIOR_COLLISION = auto()
+    BEHAVIOR_DRY_RUN = auto()
     CHECK = auto()
     CHECK_RUN = auto()
     CHECK_PATH = auto()
@@ -66,9 +67,10 @@ class COLLISION(StrEnum):
 @dataclass
 class BEHAVIOR_CONFIG:
     collision: COLLISION
+    dry_run: bool
 
     def to_dict(self) -> dict[str, Any]:
-        return dict(collision=self.collision)
+        return dict(collision=self.collision, dry_run=self.dry_run)
 
 
 @dataclass

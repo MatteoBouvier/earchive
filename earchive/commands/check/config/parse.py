@@ -76,6 +76,9 @@ def _update_config_from_file(config: ConfigDict, path: Path) -> None:
                 case HEADER.BEHAVIOR_COLLISION:
                     config.behavior.collision = as_enum(COLLISION)(value, "behavior:collision")
 
+                case HEADER.BEHAVIOR_DRY_RUN:
+                    config.behavior.dry_run = as_bool(value, "behavior:collision")
+
                 case HEADER.CHECK_RUN:
                     config.check.run = as_enum(Check)(value, "run")
 
@@ -234,6 +237,7 @@ def parse_cli_config(options: list[str]) -> CliConfig:
         characters_replacement=as_str,
         characters_ascii=as_enum(ASCII),
         behavior_collision=as_enum(COLLISION),
+        behavior_dry_run=as_bool,
     )
 
     cli_options: dict[str, Any] = {}

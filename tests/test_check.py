@@ -28,7 +28,7 @@ from tests.mock_filesystem import PathMock
 
 def DEFAULT_CONFIG(path: PathMock) -> ConfigDict:
     return ConfigDict(
-        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT),
+        behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT, dry_run=False),
         check=CHECK_CONFIG(
             run=Check.NO_CHECK,
             path=path,
