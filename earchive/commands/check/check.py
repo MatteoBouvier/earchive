@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich.panel import Panel
+
 from earchive.commands.check.config import Config
 from earchive.commands.check.config.names import COLLISION
 from earchive.commands.check.config.substitution import RegexPattern
@@ -17,7 +19,7 @@ from earchive.commands.check.names import (
     PathLengthDiagnostic,
     PathRenameDiagnostic,
 )
-from earchive.commands.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console
+from earchive.commands.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console, console_err
 from earchive.commands.check.utils import invalid_paths, plural, walk_all
 from earchive.utils.progress import Bar
 
@@ -104,7 +106,6 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
                     yield diagnostic
 
                 case PathLengthDiagnostic(path) as diagnostic:
-                    console.print(f"Path is too long ({len(str(path))}) : {path}", style=ERROR_STYLE)
                     counter.value += 1
                     yield diagnostic
 
@@ -158,5 +159,8 @@ def check_path(
 
         elif output == OutputKind.silent:
             console.print(counter.value)
+
+    if output != OutputKind.silent and config.behavior.dry_run:
+        console_err.print(Panel(" >>> Performed dry-run, nothing was changed <<< ", style=ERROR_STYLE, expand=False))
 
     return counter.value

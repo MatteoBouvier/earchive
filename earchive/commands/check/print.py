@@ -29,6 +29,7 @@ from earchive.commands.check.names import (
 from earchive.utils.progress import Bar
 
 console = Console(force_terminal=True, legacy_windows=False)
+console_err = Console(force_terminal=True, legacy_windows=False, stderr=True)
 
 ERROR_STYLE = "bold red"
 SUCCESS_STYLE = "bold green"
