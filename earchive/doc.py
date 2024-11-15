@@ -141,7 +141,7 @@ check_doc = Text.assemble(
             "\t\tcollision                          ",
             _EnumList(COLLISION),
             "             how to treat file name collisions when renaming\n",
-            "\t\tdry-run                             boolean                       perform dry-run, not actually modifying file names\n",
+            "\t\tdry-run                             boolean|positive integer      perform dry-run, not actually modifying file names\n",
             "\n\t\tFor option `behavior:collision`, the following is done:\n",
             "\t\t- SKIP       do not rename file\n",
             "\t\t- INCREMENT  add `(<nb>)` to the end of the file name, where <nb> is the next smallest available number in the directory\n",

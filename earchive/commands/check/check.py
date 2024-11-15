@@ -2,6 +2,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+import itertools as it
 
 from rich.panel import Panel
 
@@ -90,9 +91,11 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
                     pass
 
     # second pass : replace patterns defined in the `cfg` file
-    for root, dirs, files in Bar(
-        walk_all(config.check.path, top_down=False), description="Processing (renaming files)"
-    ):
+    paths = walk_all(config.check.path, top_down=False)
+    if config.behavior.dry_run:
+        paths = it.islice(paths, config.behavior.dry_run)
+
+    for root, dirs, files in Bar(paths, description="Processing (renaming files)"):
         for file in files + dirs:
             rename_data = _rename_if_match(root / file, config)
 

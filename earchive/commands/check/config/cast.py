@@ -1,6 +1,6 @@
-from pathlib import Path
 import re
 from enum import Enum
+from pathlib import Path
 from typing import Callable
 
 import earchive.errors as err
@@ -26,6 +26,18 @@ def as_bool(value: str | bool, option: str) -> bool:
         return False
 
     err.assert_option(err.Raise(option, value, expected="[true|false]"))
+
+
+def as_bool_or_uint(value: str, option: str) -> bool | int:
+    try:
+        return as_bool(value, option)
+
+    except AssertionError:
+        try:
+            return as_uint(value, option)
+
+        except AssertionError:
+            err.assert_option(err.Raise(option, value, expected="[integer|true|false]"))
 
 
 def as_str(value: str, option: str) -> str:

@@ -110,7 +110,11 @@ def invalid_paths(
     if checks is None:
         checks = config.check.run
 
-    for root, dirs, files in progress(walk_all(config.check.path, errors, top_down=False)):
+    paths = walk_all(config.check.path, errors, top_down=False)
+    if config.behavior.dry_run:
+        paths = it.islice(paths, config.behavior.dry_run)
+
+    for root, dirs, files in progress(paths):
         for file in files + dirs:
             yield from check_valid_file(root / file, config, checks, empty_dirs)
 

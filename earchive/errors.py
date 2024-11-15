@@ -154,7 +154,7 @@ class Raise(AssertTest):
 
 @final
 class IsType(AssertTest):
-    def __init__(self, opt: str, value: Any, typ: type) -> None:
+    def __init__(self, opt: str, value: Any, typ: type | tuple[type, ...]) -> None:
         super().__init__(opt, value)
         self._type = typ
 
@@ -212,7 +212,7 @@ def assert_option(test: AssertTest) -> None:
     if not test():
         raise AssertionError(
             OPTION_INVALID_VALUE,
-            f"Got invalid value '{test.value}' for option '{test.opt}'\n\t expected {test.expected}",
+            f"Got invalid value '{test.value}' for option '{test.opt}', expected {test.expected}",
         )
 
 

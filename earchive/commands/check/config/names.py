@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
@@ -67,10 +68,13 @@ class COLLISION(StrEnum):
 @dataclass
 class BEHAVIOR_CONFIG:
     collision: COLLISION
-    dry_run: bool
+    dry_run: int  # 0 to disable, 1+ for the max number of files to analyze
 
     def to_dict(self) -> dict[str, Any]:
-        return dict(collision=self.collision, dry_run=self.dry_run)
+        return dict(
+            collision=self.collision,
+            dry_run=True if self.dry_run == sys.maxsize else (False if self.dry_run == 0 else self.dry_run),
+        )
 
 
 @dataclass

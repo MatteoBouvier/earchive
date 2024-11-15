@@ -7,7 +7,7 @@ from typing import Any, Callable, cast
 import tomllib
 
 import earchive.errors as err
-from earchive.commands.check.config.cast import as_bool, as_enum, as_path, as_regex, as_str, as_uint
+from earchive.commands.check.config.cast import as_bool, as_bool_or_uint, as_enum, as_path, as_regex, as_str, as_uint
 from earchive.commands.check.config.config import CliConfig, Config
 from earchive.commands.check.config.default import DEFAULT_CONFIG
 from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
@@ -79,7 +79,8 @@ def _update_config_from_file(config: ConfigDict, path: Path) -> None:
                     config.behavior.collision = as_enum(COLLISION)(value, "behavior:collision")
 
                 case HEADER.BEHAVIOR_DRY_RUN:
-                    config.behavior.dry_run = as_bool(value, "behavior:collision")
+                    dry_run = as_bool_or_uint(value, "behavior:collision")
+                    config.behavior.dry_run = sys.maxsize if dry_run is True else int(dry_run)
 
                 case HEADER.CHECK_RUN:
                     config.check.run = as_enum(Check)(value, "run")
@@ -249,7 +250,7 @@ def parse_cli_config(options: list[str]) -> CliConfig:
         characters_replacement=as_str,
         characters_ascii=as_enum(ASCII),
         behavior_collision=as_enum(COLLISION),
-        behavior_dry_run=as_bool,
+        behavior_dry_run=as_bool_or_uint,
     )
 
     cli_options: dict[str, Any] = {}

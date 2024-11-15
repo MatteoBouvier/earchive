@@ -120,7 +120,7 @@ class CliConfig:
     characters_ascii: ASCII | None = None
     rename: list[RegexPattern] = field(default_factory=list)
     behavior_collision: COLLISION | None = None
-    behavior_dry_run: bool | None = None
+    behavior_dry_run: bool | int | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CliConfig:
@@ -132,8 +132,9 @@ class CliConfig:
             config.behavior.collision = self.behavior_collision
 
         if self.behavior_dry_run is not None:
-            err.assert_option(err.IsType("behavior:dry_run", self.behavior_dry_run, bool))
-            config.behavior.dry_run = self.behavior_dry_run
+            err.assert_option(err.IsType("behavior:dry_run", self.behavior_dry_run, (bool, int)))
+            err.assert_option(err.IsGreater("behavior:dry_run", self.behavior_dry_run, 0))
+            config.behavior.dry_run = sys.maxsize if self.behavior_dry_run is True else int(self.behavior_dry_run)
 
         if self.os is not None:
             err.assert_option(err.IsType("os", self.os, OS))
