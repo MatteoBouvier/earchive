@@ -1,8 +1,8 @@
 import itertools as it
+import sys
 from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
-import sys
 from typing import Any
 
 from earchive.commands.check.config import Config

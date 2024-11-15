@@ -9,6 +9,7 @@ class Bar[T]:
     def __init__(
         self,
         iterable: Iterable[T] | None = None,
+        *,
         description: str = "",
         total: int | None = None,
         multiplier: int = 1,

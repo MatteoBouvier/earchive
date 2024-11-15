@@ -22,6 +22,7 @@ from earchive.commands.check.names import (
 from earchive.commands.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console, console_err
 from earchive.commands.check.utils import invalid_paths, plural, walk_all
 from earchive.utils.progress import Bar
+import earchive.errors as err
 
 
 @dataclass
@@ -67,7 +68,9 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
     if Check.CHARACTERS in config.check.run:
         repl = bytearray(config.check.characters.replacement, encoding="utf-8")
 
-        for invalid_data in invalid_paths(config, checks=Check.CHARACTERS, progress=Bar()):
+        for invalid_data in invalid_paths(
+            config, checks=Check.CHARACTERS, progress=Bar(description="Processing (invalid characters)")
+        ):
             match invalid_data:
                 case PathCharactersDiagnostic(Path() as path, matches=matches):
                     new_stem = bytearray(path.stem, encoding="utf-8")
@@ -87,7 +90,9 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
                     pass
 
     # second pass : replace patterns defined in the `cfg` file
-    for root, dirs, files in walk_all(config.check.path, top_down=False):
+    for root, dirs, files in Bar(
+        walk_all(config.check.path, top_down=False), description="Processing (renaming files)"
+    ):
         for file in files + dirs:
             rename_data = _rename_if_match(root / file, config)
 
@@ -97,7 +102,11 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
     # thrid pass : check for paths still too long / remove empty directories
     remaining_checks = config.check.run ^ Check.CHARACTERS
     if remaining_checks:
-        for invalid_data in invalid_paths(config, checks=remaining_checks, progress=Bar()):
+        for invalid_data in invalid_paths(
+            config,
+            checks=remaining_checks,
+            progress=Bar(description=f"Processing (path {' & '.join(str(c.name).lower() for c in remaining_checks)})"),
+        ):
             match invalid_data:
                 case PathEmptyDiagnostic(path) as diagnostic:
                     if not config.behavior.dry_run:
@@ -113,6 +122,44 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
                     pass
 
 
+def _check_fix(config: Config, messages: Grid, output: OutputKind) -> Counter:
+    counter = Counter()
+
+    for message in rename(config, counter):
+        messages.add_row(message)
+
+    messages.print()
+
+    if output == OutputKind.cli:
+        console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
+        if counter.value:
+            console.print(f"{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE)
+        else:
+            console.print("All invalid paths were fixed.", style=SUCCESS_STYLE)
+
+    return counter
+
+
+def _check_analyze(config: Config, messages: Grid, output: OutputKind) -> Counter:
+    counter = Counter()
+    progress: Bar[Any] = Bar(description="processed files ...")
+
+    for invalid_data in invalid_paths(config, progress=progress):
+        messages.add_row(invalid_data)
+        counter.value += 1
+
+    messages.print()
+
+    if output == OutputKind.cli:
+        console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
+        console.print(
+            f"Found {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
+            style=ERROR_STYLE if counter.value else SUCCESS_STYLE,
+        )
+
+    return counter
+
+
 def check_path(
     config: Config,
     output: OutputKind = OutputKind.cli,
@@ -121,46 +168,25 @@ def check_path(
     if not config.check.run and not fix:
         return 0
 
-    counter = Counter()
-    progress: Bar[Any] = Bar("processed files ...")
     messages = Grid(config, kind=output, mode="fix" if fix else "check")
 
-    if fix:
-        for message in rename(config, counter):
-            messages.add_row(message)
+    try:
+        if fix:
+            counter = _check_fix(config, messages, output)
 
-    else:
-        for invalid_data in invalid_paths(config, progress=progress):
-            messages.add_row(invalid_data)
-            counter.value += 1
+        else:
+            counter = _check_analyze(config, messages, output)
 
-    messages.print()
-
-    if fix:
-        if output == OutputKind.cli:
-            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
-            if counter.value:
-                console.print(
-                    f"{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE
-                )
-            else:
-                console.print("All invalid paths were fixed.", style=SUCCESS_STYLE)
-
-        elif output == OutputKind.silent:
+        if output == OutputKind.silent:
             console.print(counter.value)
 
-    else:
-        if output == OutputKind.cli:
-            console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
-            console.print(
-                f"Found {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
-                style=ERROR_STYLE if counter.value else SUCCESS_STYLE,
+    except KeyboardInterrupt:
+        raise err.runtime_error("Keyboard interrupt")
+
+    finally:
+        if config.behavior.dry_run:
+            console_err.print(
+                Panel(" >>> Performed dry-run, nothing was changed <<< ", style=ERROR_STYLE, expand=False)
             )
-
-        elif output == OutputKind.silent:
-            console.print(counter.value)
-
-    if output != OutputKind.silent and config.behavior.dry_run:
-        console_err.print(Panel(" >>> Performed dry-run, nothing was changed <<< ", style=ERROR_STYLE, expand=False))
 
     return counter.value
