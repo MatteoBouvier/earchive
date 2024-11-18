@@ -1,9 +1,10 @@
 import itertools as it
 from enum import StrEnum, auto
-from pathlib import Path
 from typing import Self, override
 
 import psutil
+
+from earchive.utils.path import FastPath
 
 
 class FS(StrEnum):
@@ -21,7 +22,7 @@ class FS(StrEnum):
         return super()._missing_(value)
 
 
-def get_file_system(path: Path) -> FS:
+def get_file_system(path: FastPath) -> FS:
     path = path.resolve()
     partitions = {part.mountpoint: part.fstype for part in psutil.disk_partitions()}
 

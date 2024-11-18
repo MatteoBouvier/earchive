@@ -2,8 +2,6 @@ import itertools as it
 import sys
 from collections.abc import Generator
 from itertools import chain
-from pathlib import Path
-from typing import Any
 
 from earchive.commands.check.config import Config
 from earchive.commands.check.names import (
@@ -17,6 +15,7 @@ from earchive.commands.check.names import (
     PathLengthDiagnostic,
 )
 from earchive.utils.os import OS
+from earchive.utils.path import FastPath
 from earchive.utils.progress import Bar, NoBar
 
 
@@ -24,22 +23,24 @@ def plural(value: int) -> str:
     return "" if value == 1 else "s"
 
 
-def _is_excluded(path: Path, config: Config) -> bool:
+def _is_excluded(path: FastPath, config: Config) -> bool:
     if not len(config.exclude):
         return False
+
     return any(parent in config.exclude for parent in chain([path], path.parents))
 
 
-def _is_empty(path: Path, empty_dirs: set[Path]) -> bool:
+def _is_empty_recurse(path: FastPath, empty_dirs: set[str]) -> bool:
     for sub in path.iterdir():
         if sub not in empty_dirs:
             return False
 
-    empty_dirs.add(path)
+    empty_dirs.add(path.str())
     return True
 
 
-def path_len(path: Path, os: OS) -> int:
+# TODO: move to FastPath
+def path_len(path: FastPath, os: OS) -> int:
     """Get a Path's true length on a target operating system, even from another os"""
     path_len = len(str(path))
 
@@ -51,14 +52,20 @@ def path_len(path: Path, os: OS) -> int:
 
 
 def check_valid_file(
-    path: Path, config: Config, checks: Check, empty_dirs: set[Path]
+    path: FastPath, is_dir: bool, config: Config, checks: Check, empty_dirs: set[str]
 ) -> Generator[PathDiagnostic, None, None]:
     if _is_excluded(path, config):
         return
 
     if Check.EMPTY in checks:
-        if path.is_dir() and _is_empty(path, empty_dirs):
-            yield PathEmptyDiagnostic(path)
+        if is_dir:
+            try:
+                is_empty = _is_empty_recurse(path, empty_dirs)
+            except PermissionError as e:
+                yield PathErrorDiagnostic(path, error=e)
+            else:
+                if is_empty:
+                    yield PathEmptyDiagnostic(path)
 
     if Check.CHARACTERS in checks:
         if len(match := config.invalid_characters.finditer(path.stem)):
@@ -76,21 +83,21 @@ def check_valid_file(
 
 
 def walk_all(
-    path: Path,
+    path: FastPath,
     errors: list[PathDiagnostic] | None = None,
     top_down: bool = True,
     follow_symlinks: bool = False,
-) -> Generator[tuple[Path, list[str], list[str]], None, None]:
+) -> Generator[tuple[FastPath, list[str], list[str]], None, None]:
     if errors is None:
         errors = []
 
-    def yield_root() -> Generator[tuple[Path, list[str], list[str]], None, None]:
-        yield path.parent, [str(path)] if path.is_dir() else [], [str(path)] if path.is_file() else []
+    def yield_root() -> Generator[tuple[FastPath, list[str], list[str]], None, None]:
+        yield path.parent, [path.name] if path.is_dir() else [], [path.name] if path.is_file() else []
 
     def on_error(err: OSError) -> None:
-        errors.append(PathErrorDiagnostic(Path(err.filename), error=err))
+        errors.append(PathErrorDiagnostic(FastPath.from_str(err.filename), error=err))
 
-    def yield_children() -> Generator[tuple[Path, list[str], list[str]], None, None]:
+    def yield_children() -> Generator[tuple[FastPath, list[str], list[str]], None, None]:
         if path.is_dir():
             yield from path.walk(top_down=top_down, on_error=on_error, follow_symlinks=follow_symlinks)
 
@@ -102,9 +109,9 @@ def walk_all(
 
 
 def invalid_paths(
-    config: Config, checks: Check | None = None, progress: Bar[Any] = NoBar
+    config: Config, checks: Check | None = None, progress: Bar[tuple[FastPath, list[str], list[str]]] = NoBar
 ) -> Generator[PathDiagnostic, None, None]:
-    empty_dirs: set[Path] = set()
+    empty_dirs: set[str] = set()
     errors: list[PathDiagnostic] = []
 
     if checks is None:
@@ -115,7 +122,10 @@ def invalid_paths(
         paths = it.islice(paths, config.behavior.dry_run)
 
     for root, dirs, files in progress(paths):
-        for file in files + dirs:
-            yield from check_valid_file(root / file, config, checks, empty_dirs)
+        for file in files:
+            yield from check_valid_file(root / file, False, config, checks, empty_dirs)
+
+        for dir in dirs:
+            yield from check_valid_file(root / dir, True, config, checks, empty_dirs)
 
     yield from errors

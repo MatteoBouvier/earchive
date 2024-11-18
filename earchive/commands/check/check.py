@@ -1,11 +1,11 @@
+import itertools as it
 from collections.abc import Generator
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
-import itertools as it
 
 from rich.panel import Panel
 
+import earchive.errors as err
 from earchive.commands.check.config import Config
 from earchive.commands.check.config.names import COLLISION
 from earchive.commands.check.config.substitution import RegexPattern
@@ -17,13 +17,14 @@ from earchive.commands.check.names import (
     PathCharactersReplaceDiagnostic,
     PathDiagnostic,
     PathEmptyDiagnostic,
+    PathErrorDiagnostic,
     PathLengthDiagnostic,
     PathRenameDiagnostic,
 )
 from earchive.commands.check.print import ERROR_STYLE, SUCCESS_STYLE, Grid, console, console_err
 from earchive.commands.check.utils import invalid_paths, plural, walk_all
+from earchive.utils.path import FastPath
 from earchive.utils.progress import Bar
-import earchive.errors as err
 
 
 @dataclass
@@ -31,10 +32,10 @@ class Counter:
     value: int = 0
 
 
-def safe_rename(path: Path, target: Path, config: Config) -> bool:
+def safe_rename(path: FastPath, target: FastPath, config: Config) -> tuple[bool, FastPath]:
     if target.exists():
         if config.behavior.collision is COLLISION.SKIP:
-            return False
+            return (False, path)
 
         # add `(<nb>)` to file name
         next_nb = (
@@ -45,11 +46,11 @@ def safe_rename(path: Path, target: Path, config: Config) -> bool:
     if not config.behavior.dry_run:
         path.rename(target)
 
-    return True
+    return (True, target)
 
 
-def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
-    new_name = str(path.name)
+def _rename_if_match(parent: FastPath, filename: str, config: Config) -> PathDiagnostic | None:
+    new_name = filename
     matched_patterns: list[tuple[RegexPattern, str]] = []
 
     for pattern in config.rename:
@@ -58,10 +59,15 @@ def _rename_if_match(path: Path, config: Config) -> PathDiagnostic | None:
         if nsubs:
             matched_patterns.append((pattern, new_name))
 
-    new_path = path.parent / new_name
+    if len(matched_patterns):
+        old_path = parent / filename
+        success, new_path = safe_rename(old_path, parent / new_name, config)
 
-    if len(matched_patterns) and safe_rename(path, new_path, config):
-        return PathRenameDiagnostic(path, new_path, patterns=matched_patterns)
+        if success:
+            return PathRenameDiagnostic(old_path, new_path, patterns=matched_patterns)
+
+        else:
+            return PathErrorDiagnostic(old_path, error=err.cannot_overwrite(new_path.str()))
 
 
 def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, None]:
@@ -73,15 +79,15 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
             config, checks=Check.CHARACTERS, progress=Bar(description="Processing (invalid characters)")
         ):
             match invalid_data:
-                case PathCharactersDiagnostic(Path() as path, matches=matches):
+                case PathCharactersDiagnostic(FastPath() as path, matches=matches):
                     new_stem = bytearray(path.stem, encoding="utf-8")
 
                     for match in matches:
                         new_stem[match.start() : match.start() + len(bytearray(match.group(0), "utf-8"))] = repl
 
-                    new_path = path.with_stem(new_stem.decode())
+                    success, new_path = safe_rename(path, path.with_stem(new_stem.decode()), config)
 
-                    if safe_rename(path, new_path, config):
+                    if success:
                         yield PathCharactersReplaceDiagnostic(path, new_path, matches=matches)
 
                     else:
@@ -97,7 +103,7 @@ def rename(config: Config, counter: Counter) -> Generator[PathDiagnostic, None, 
 
     for root, dirs, files in Bar(paths, description="Processing (renaming files)"):
         for file in files + dirs:
-            rename_data = _rename_if_match(root / file, config)
+            rename_data = _rename_if_match(root, file, config)
 
             if rename_data is not None:
                 yield rename_data

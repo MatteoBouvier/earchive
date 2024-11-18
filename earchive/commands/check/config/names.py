@@ -4,13 +4,13 @@ import re
 import sys
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from pathlib import Path
 from typing import Any, Self, override
 
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
+from earchive.utils.path import FastPath
 
 
 class HEADER(StrEnum):
@@ -94,7 +94,7 @@ class CHECK_CHARACTERS_CONFIG:
 @dataclass
 class CHECK_CONFIG:
     run: Check
-    path: Path
+    path: FastPath
     operating_system: OS
     file_system: FS
     base_path_length: int
@@ -119,4 +119,4 @@ class ConfigDict:
     behavior: BEHAVIOR_CONFIG
     check: CHECK_CONFIG
     rename: list[RegexPattern]
-    exclude: list[Path]
+    exclude: set[FastPath]

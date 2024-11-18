@@ -5,13 +5,13 @@ import re
 from collections.abc import Generator, Iterable
 from decimal import Decimal
 from enum import IntFlag
-from pathlib import Path
 from typing import Any
 
 from typing_extensions import Callable
 
 from earchive.commands.check import RegexPattern
 from earchive.names import SupportsWrite
+from earchive.utils.path import FastPath
 
 # FIXME: bug when writing config to same file, file is wrong or completely blank
 
@@ -67,7 +67,7 @@ class TomlEncoder:
             datetime.date: lambda value: value.isoformat(),
             re.Pattern: self._dump_pattern,
             RegexPattern: self._dump_regex,
-            Path: lambda value: self._dump_str(str(value)),
+            FastPath: lambda value: self._dump_str(str(value)),
         }
 
     def _dump_str(self, value: str) -> str:

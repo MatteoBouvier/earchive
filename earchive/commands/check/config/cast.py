@@ -1,9 +1,9 @@
 import re
 from enum import Enum
-from pathlib import Path
 from typing import Callable
 
 import earchive.errors as err
+from earchive.utils.path import FastPath
 
 
 def as_uint(value: str, option: str) -> int:
@@ -64,8 +64,8 @@ def as_enum[E: Enum](enum: type[E]) -> Callable[[str, str], E]:
     return inner
 
 
-def as_path(value: str, option: str) -> Path:
+def as_path(value: str, option: str) -> FastPath:
     try:
-        return Path(value)
+        return FastPath.from_str(value)
     except TypeError:
         err.assert_option(err.Raise(option, value, expected="file path"))

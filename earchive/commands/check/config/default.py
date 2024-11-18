@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 
 from earchive.commands.check.config.names import (
     ASCII,
@@ -12,6 +11,7 @@ from earchive.commands.check.config.names import (
 from earchive.commands.check.names import Check
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
+from earchive.utils.path import FastPath
 
 DEFAULT_CHECK_RUN = Check.CHARACTERS | Check.LENGTH
 DEFAULT_CHECK_OS = OS.AUTO
@@ -26,7 +26,7 @@ DEFAULT_CHECK_CHARACTERS = CHECK_CHARACTERS_CONFIG(
 )
 
 
-def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
+def DEFAULT_CONFIG(check_path: FastPath) -> ConfigDict:
     return ConfigDict(
         behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT, dry_run=False),
         check=CHECK_CONFIG(
@@ -40,5 +40,5 @@ def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
             characters=DEFAULT_CHECK_CHARACTERS,
         ),
         rename=[],
-        exclude=[],
+        exclude=set(),
     )

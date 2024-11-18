@@ -4,7 +4,6 @@ import re
 import string
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, NotRequired, TypedDict, override
 
 import earchive.errors as err
@@ -14,6 +13,7 @@ from earchive.commands.check.config.os import CONFIG_OPERATING_SYSTEMS
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
+from earchive.utils.path import FastPath
 
 ASCII_INVALID = {
     ASCII.STRICT: [re.compile("(?![a-zA-Z0-9_]).")],
@@ -58,7 +58,7 @@ class Config:
     behavior: BEHAVIOR_CONFIG
     check: CHECK_CONFIG
     rename: list[RegexPattern]
-    exclude: list[Path]
+    exclude: set[FastPath]
     _cache: _Cache = field(init=False, default_factory=lambda: _Cache())
 
     @classmethod
@@ -160,7 +160,7 @@ class CliConfig:
             config.check.max_name_length = self.max_name_length
 
         if self.characters_extra_invalid is not None:
-            err.assert_option(err.IsType("characters:extra_invalid", self.characters_extra_invalid, str))
+            err.assert_option(err.IsType("characters:extra_invalid", self.characters_extra_invalid, re.Pattern))
             config.check.characters.extra_invalid = self.characters_extra_invalid
 
         if self.characters_replacement is not None:

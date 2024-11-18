@@ -4,7 +4,6 @@ import itertools as it
 import re
 import shutil
 from collections.abc import Iterable
-from pathlib import Path
 from typing import Literal, NamedTuple, final
 
 from rich.console import Console, RenderableType, RenderResult
@@ -27,6 +26,7 @@ from earchive.commands.check.names import (
     PathRenameDiagnostic,
 )
 from earchive.commands.check.utils import path_len
+from earchive.utils.path import FastPath
 from earchive.utils.progress import Bar
 
 console = Console(force_terminal=True, legacy_windows=False)
@@ -45,7 +45,7 @@ def _repr_regex_pattern(pattern: RegexPattern) -> str:
     return f"{pattern.match.pattern}{flags}"
 
 
-def _repr_matches(file_name: str, matches: list[re.Match[str]], new_path: Path | None) -> tuple[Text, list[Text]]:
+def _repr_matches(file_name: str, matches: list[re.Match[str]], new_path: FastPath | None) -> tuple[Text, list[Text]]:
     txt_path: list[str | tuple[str, str]] = ["/"]
     txt_under: list[str | tuple[str, str]] = [" "]
     last_offset = 0
@@ -69,7 +69,7 @@ def _repr_matches(file_name: str, matches: list[re.Match[str]], new_path: Path |
 
 
 def _repr_renames(
-    file_name: str, patterns: list[tuple[RegexPattern, str]], new_path: Path | None
+    file_name: str, patterns: list[tuple[RegexPattern, str]], new_path: FastPath | None
 ) -> tuple[Text, list[Text]]:
     first_p, first_new_name = patterns[0]
 
@@ -141,20 +141,20 @@ class Grid:
     def _cli_repr(self) -> RenderResult:
         for row in self.rows:
             match row:
-                case PathCharactersReplaceDiagnostic(Path() as path, Path() as new_path, matches=list(matches)):
+                case PathCharactersReplaceDiagnostic(FastPath() as path, FastPath() as new_path, matches=list(matches)):
                     repr_above, repr_under_list = _repr_matches(path.name, matches, new_path)
 
-                case PathCharactersDiagnostic(Path() as path, matches=list(matches)):
+                case PathCharactersDiagnostic(FastPath() as path, matches=list(matches)):
                     repr_above, repr_under_list = _repr_matches(path.name, matches, None)
 
-                case PathInvalidNameDiagnostic(Path() as path):
+                case PathInvalidNameDiagnostic(FastPath() as path):
                     repr_above = Text.assemble("/", (f"{path.name} ~ name is invalid", ERROR_STYLE))
                     repr_under_list = []
 
-                case PathRenameDiagnostic(Path() as path, Path() as new_path, patterns=list(patterns)):
+                case PathRenameDiagnostic(FastPath() as path, FastPath() as new_path, patterns=list(patterns)):
                     repr_above, repr_under_list = _repr_renames(path.name, patterns, new_path)
 
-                case PathLengthDiagnostic(Path() as path):
+                case PathLengthDiagnostic(FastPath() as path):
                     repr_above, repr_under_list = _repr_too_long(
                         path.name,
                         path_len(path, self.config.check.operating_system),
@@ -162,7 +162,7 @@ class Grid:
                         part="path",
                     )
 
-                case PathFilenameLengthDiagnostic(Path() as path):
+                case PathFilenameLengthDiagnostic(FastPath() as path):
                     repr_above, repr_under_list = _repr_too_long(
                         path.name, len(path.name), self.config.check.max_name_length, part="filename"
                     )
@@ -175,7 +175,7 @@ class Grid:
 
                     repr_under_list = []
 
-                case PathErrorDiagnostic(Path() as path, error=OSError() as err):
+                case PathErrorDiagnostic(FastPath() as path, error=OSError() as err):
                     repr_above = f"{path.name} ~ {err.errno}, {err.strerror}"
                     repr_under_list = []
 
@@ -199,29 +199,29 @@ class Grid:
 
         for row in self.rows:
             match row:
-                case PathCharactersReplaceDiagnostic(Path() as path, Path() as new_path, matches=list(matches)):
+                case PathCharactersReplaceDiagnostic(FastPath() as path, FastPath() as new_path, matches=list(matches)):
                     reason = ",".join((f"{match.group()}@{match.start()}" for match in matches))
                     new_name = new_path.name
 
-                case PathCharactersDiagnostic(Path() as path, matches=list(matches)):
+                case PathCharactersDiagnostic(FastPath() as path, matches=list(matches)):
                     reason = ",".join((f"{match.group()}@{match.start()}" for match in matches))
                     new_name = ""
 
-                case PathInvalidNameDiagnostic(Path() as path):
+                case PathInvalidNameDiagnostic(FastPath() as path):
                     reason = ""
                     new_name = ""
 
-                case PathRenameDiagnostic(Path() as path, Path() as new_path, patterns=list(patterns)):
+                case PathRenameDiagnostic(FastPath() as path, FastPath() as new_path, patterns=list(patterns)):
                     reason = ",".join((_repr_regex_pattern(pattern) for (pattern, _) in patterns))
                     new_name = new_path.name
 
-                case PathLengthDiagnostic(Path() as path):
+                case PathLengthDiagnostic(FastPath() as path):
                     reason = (
                         f"{path_len(path, self.config.check.operating_system)} > {self.config.check.max_path_length}"
                     )
                     new_name = ""
 
-                case PathFilenameLengthDiagnostic(Path() as path):
+                case PathFilenameLengthDiagnostic(FastPath() as path):
                     reason = f"{len(path.name)} > {self.config.check.max_name_length}"
                     new_name = ""
 
@@ -229,7 +229,7 @@ class Grid:
                     reason = ""
                     new_name = "DELETED" if self.mode == "fix" else ""
 
-                case PathErrorDiagnostic(Path() as path, error=OSError() as err):
+                case PathErrorDiagnostic(FastPath() as path, error=OSError() as err):
                     reason = f"{err.errno}:{err.strerror}"
                     new_name = ""
 

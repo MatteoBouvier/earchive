@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import os
+import re
 import stat
 from collections.abc import Generator, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import InitVar, dataclass, field
-from pathlib import Path
 from types import TracebackType
-from typing import Any, Never, Self, cast, final, override
+from typing import Callable, Never, Self, cast, final, override
 
+from earchive.utils.path import FastPath
 
 type StrPath = str | os.PathLike[str]
 
@@ -69,7 +70,7 @@ class File:
             if name != "..":
                 yield self.get(name, ignore_mode)
 
-    def _set_parent(self, dir: Directory) -> None:
+    def set_parent(self, dir: Directory) -> None:
         self._children_lookup[".."] = dir
 
     @property
@@ -85,14 +86,14 @@ class File:
         if self.name == "/":
             return AbsPath("/")
 
-        abs_path = "/" + self.name
+        abs_path = self.name
         file = self.parent
 
         while file.name != "/":
             abs_path = f"{file.name}/{abs_path}"
             file = file.parent
 
-        return AbsPath(abs_path)
+        return AbsPath("/" + abs_path)
 
 
 @dataclass(repr=False)
@@ -209,7 +210,7 @@ class ScandirIterator(Iterator[DirEntry], AbstractContextManager):  # pyright: i
 
 def _set_parent(dir: Directory) -> None:
     for file in dir.list_children(ignore_mode=True):
-        file._set_parent(dir)
+        file.set_parent(dir)
 
         if isinstance(file, Directory):
             _set_parent(file)
@@ -221,7 +222,7 @@ class FileSystem:
         self.root = FileSystem.D("/", files, mode=mode)
 
         # add .. parent directory to all files
-        self.root._set_parent(self.root)
+        self.root.set_parent(self.root)
         _set_parent(self.root)
 
     @override
@@ -254,10 +255,97 @@ class FileSystem:
 
         return ScandirIterator(file)
 
+    def walk(
+        self,
+        top: PathMock,
+        top_down: bool = True,
+        on_error: Callable[[OSError], None] | None = None,
+        follow_symlinks: bool = False,
+    ) -> Generator[tuple[PathMock, list[str], list[str]], None, None]:
+        stack: list[PathMock | tuple[PathMock, list[str], list[str]]] = [top]
+        # islink, join = path.islink, path.join
+
+        while stack:
+            top_ = stack.pop()
+            if isinstance(top_, tuple):
+                yield top_
+                continue
+
+            dirs: list[str] = []
+            nondirs: list[str] = []
+            walk_dirs: list[str] = []
+
+            try:
+                scandir_it = self.scandir(top_)
+            except PermissionError as error:
+                if on_error is not None:
+                    on_error(error)
+                continue
+
+            cont = False
+            with scandir_it:
+                while True:
+                    try:
+                        try:
+                            entry = next(scandir_it)
+                        except StopIteration:
+                            break
+                    except PermissionError as error:
+                        if on_error is not None:
+                            on_error(error)
+                        cont = True
+                        break
+
+                    is_dir = entry.is_dir()
+
+                    if is_dir:
+                        dirs.append(entry.name)
+                    else:
+                        nondirs.append(entry.name)
+
+                    if not top_down and is_dir:
+                        # Bottom-up: traverse into sub-directory, but exclude
+                        # symlinks to directories if followlinks is False
+                        if follow_symlinks:
+                            walk_into = True
+                        else:
+                            try:
+                                is_symlink = entry.is_symlink()
+                            except OSError:
+                                # If is_symlink() raises an OSError, consider the
+                                # entry not to be a symbolic link, same behaviour
+                                # as os.path.islink().
+                                is_symlink = False
+                            walk_into = not is_symlink
+
+                        if walk_into:
+                            walk_dirs.append(entry.path)
+            if cont:
+                continue
+
+            if top_down:
+                # Yield before sub-directory traversal if going top down
+                yield top_, dirs, nondirs
+                # Traverse into sub-directories
+                for dirname in reversed(dirs):
+                    new_path = top_ / dirname
+                    # bpo-23605: os.path.islink() is used instead of caching
+                    # entry.is_symlink() result during the loop on os.scandir() because
+                    # the caller can replace the directory entry during the "yield"
+                    # above.
+                    if follow_symlinks:
+                        stack.append(new_path)
+            else:
+                # Yield after sub-directory traversal if going bottom up
+                stack.append((top_, dirs, nondirs))
+                # Traverse into sub-directories
+                for new_path in reversed(walk_dirs):
+                    stack.append(PathMock.from_str(new_path, file_system=self))
+
     def rename(self, src_path: PathMock, dst_path: PathMock) -> None:
         destination = self.get(dst_path.parent)
         if not isinstance(destination, Directory):
-            not_a_directory(destination.absolute_path)
+            raise not_a_directory(destination.absolute_path)
 
         source = self.get(src_path)
         destination.set(dst_path.name, source)
@@ -267,50 +355,92 @@ class FileSystem:
         source.parent.delete(source.name)
 
     def get(self, at_path: PathMock) -> File:
-        path_parts = at_path.parts
-        assert path_parts[0] == "/"
+        assert at_path.is_absolute()
 
         file = self.root
-        for part in path_parts[1:]:
+        for part in at_path.segments:
             file = file.get(part)
 
         return file
 
 
-class PathMock(Path):
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        return object.__new__(cls)
-
-    def __init__(self, *args: StrPath, file_system: FileSystem) -> None:  # pyright: ignore[reportMissingSuperCall]
-        self._raw_paths: tuple[StrPath, ...] = args
+class PathMock(FastPath):
+    def __init__(self, *segments: str, absolute: bool, file_system: FileSystem) -> None:
+        super().__init__(*segments, absolute=absolute)
         self.fs: FileSystem = file_system
 
+    @classmethod
     @override
-    def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
-        return self.fs.get(self).stat(follow_symlinks=follow_symlinks)
+    def from_str(cls, path: str, file_system: FileSystem) -> PathMock:
+        fast_path = FastPath.from_str(path)
+        return PathMock(*fast_path.segments, absolute=fast_path.is_absolute(), file_system=file_system)
 
     @override
-    def iterdir(self) -> Generator[Self, None, None]:
+    def __truediv__(self, other: str) -> PathMock:
+        path = super().__truediv__(other)
+        return PathMock(*path.segments, absolute=path._absolute, file_system=self.fs)
+
+    @property
+    @override
+    def parent(self) -> PathMock:
+        return PathMock(*self.segments[:-1], absolute=self._absolute, file_system=self.fs)
+
+    @property
+    @override
+    def parents(self) -> Generator[PathMock, None, None]:
+        segments = list(self.segments[:-1])
+        while len(segments):
+            yield PathMock(*segments, absolute=self._absolute, file_system=self.fs)
+            segments.pop(-1)
+
+        yield PathMock(absolute=self._absolute, file_system=self.fs)
+
+    @override
+    def is_dir(self) -> bool:
+        return isinstance(self.fs.get(self), Directory)
+
+    @override
+    def is_file(self) -> bool:
+        return not isinstance(self.fs.get(self), Directory)
+
+    @override
+    def exists(self) -> bool:
+        try:
+            self.fs.get(self)
+        except FileNotFoundError:
+            return False
+        else:
+            return True
+
+    @override
+    def walk(
+        self, top_down: bool = True, on_error: Callable[[OSError], None] | None = None, follow_symlinks: bool = False
+    ) -> Generator[tuple[PathMock, list[str], list[str]], None, None]:
+        yield from self.fs.walk(self, top_down, on_error, follow_symlinks)
+
+    @override
+    def iterdir(self) -> list[str]:
+        return [str(self.parent) + f.name for f in self.fs.listdir(self)]
+
+    @override
+    def with_stem(self, stem: str) -> PathMock:
+        return PathMock(*self.segments[:-1], stem + self.suffix, absolute=self._absolute, file_system=self.fs)
+
+    @override
+    def rename(self, dst: str | os.PathLike[str]) -> None:
+        dst = PathMock.from_str(str(dst), file_system=self.fs)
+        self.fs.rename(self, dst)
+
+    @override
+    def glob(self, pattern: str) -> Generator[PathMock, None, None]:
+        pattern = pattern.replace("(", r"\(").replace(")", r"\)").replace("*", ".*")
         for file in self.fs.listdir(self):
-            yield self._make_child_relpath(file.name)  # pyright: ignore[reportAttributeAccessIssue]
-
-    def _scandir(self) -> ScandirIterator:
-        return self.fs.scandir(self)
+            if re.match(pattern, file.name):
+                yield PathMock.from_str(file.absolute_path, file_system=self.fs)
 
     @override
-    def with_segments(self, *pathsegments: StrPath) -> PathMock:
-        return PathMock(*pathsegments, file_system=self.fs)
-
-    @override
-    def rename(self, target: str | os.PathLike[str]) -> PathMock:
-        target = self.with_segments(target)
-
-        self.fs.rename(self, target)
-        return target
-
-
-if __name__ == "__main__":
-    fs = FileSystem([FileSystem.D("a"), FileSystem.D("b", children=[FileSystem.F("c"), FileSystem.D("d")])])
-    p = PathMock("/b", file_system=fs)
-    for file in p.iterdir():
-        print(file, file.is_dir())
+    def resolve(self, strict: bool = False) -> PathMock:
+        if self._absolute:
+            return self
+        raise NotImplementedError
+        # return FastPath.from_str(os.path.realpath(self, strict=strict), file_system=self.fs)

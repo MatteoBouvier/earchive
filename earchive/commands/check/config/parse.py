@@ -1,6 +1,5 @@
 import os
 import re
-from pathlib import Path
 import sys
 from typing import Any, Callable, cast
 
@@ -17,6 +16,7 @@ from earchive.commands.check.names import Check
 from earchive.commands.check.utils import path_len
 from earchive.utils.fs import FS, get_file_system
 from earchive.utils.os import OS, get_operating_system
+from earchive.utils.path import FastPath
 
 
 def parse_pattern(rhs: str, lhs: Any) -> RegexPattern:
@@ -65,7 +65,7 @@ def _destructure(data: dict[Any, Any], root_header: HEADER = HEADER.NO_HEADER) -
     return elements
 
 
-def _update_config_from_file(config: ConfigDict, path: Path) -> None:
+def _update_config_from_file(config: ConfigDict, path: FastPath) -> None:
     with open(path, "rb") as config_file:
         try:
             data = tomllib.load(config_file)
@@ -126,14 +126,14 @@ def _update_config_from_file(config: ConfigDict, path: Path) -> None:
 
 
 def _update_config_from_cli(
-    config: ConfigDict, cli_config: CliConfig, checks: Check | None, dest_path: Path | None, exclude: list[Path]
+    config: ConfigDict, cli_config: CliConfig, checks: Check | None, dest_path: FastPath | None, exclude: set[FastPath]
 ) -> None:
     if checks is not None:
         config.check.run = checks
 
     cli_config.update_config(config)
 
-    if isinstance(dest_path, Path):
+    if isinstance(dest_path, FastPath):
         if config.check.operating_system is OS.AUTO:
             try:
                 config.check.operating_system = get_operating_system(dest_path)
@@ -186,16 +186,16 @@ def _update_config_from_cli(
         if config.check.max_name_length < 0:
             config.check.max_name_length = CONFIG_FILE_SYSTEMS[config.check.file_system].max_name_length
 
-    config.exclude = list(set(config.exclude) | set(exclude))
+    config.exclude |= set(exclude)
 
 
 def parse_config(
-    path: Path | None,
+    path: FastPath | None,
     cli_config: CliConfig,
-    check_path: Path,
-    dest_path: Path | None,
+    check_path: FastPath,
+    dest_path: FastPath | None,
     checks: Check | None,
-    exclude: list[Path],
+    exclude: set[FastPath],
 ) -> Config:
     r"""
     Merge config options from the cli and from a file.

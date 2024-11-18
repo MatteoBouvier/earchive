@@ -22,6 +22,7 @@ from earchive.commands.check.names import (
 from earchive.commands.check.utils import invalid_paths
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
+from earchive.utils.path import FastPath
 from tests.mock_filesystem import FileSystem as fs
 from tests.mock_filesystem import PathMock
 
@@ -40,7 +41,7 @@ def DEFAULT_CONFIG(path: PathMock) -> ConfigDict:
             characters=CHECK_CHARACTERS_CONFIG(extra_invalid=re.compile(""), replacement="_", ascii=ASCII.NO),
         ),
         rename=[],
-        exclude=[],
+        exclude=set(),
     )
 
 
@@ -48,7 +49,7 @@ cli_cfg = CliConfig.from_dict({"fs": FS.NTFS_win32, "os": OS.WINDOWS})
 
 
 def test_config_should_get_max_path_length():
-    config = parse_config(None, cli_cfg, Path(""), None, None, [])
+    config = parse_config(None, cli_cfg, FastPath.from_str("."), None, None, set())
 
     config.check.max_path_length
 
@@ -57,7 +58,7 @@ def test_should_parse_config_special_characters_extra():
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b'[check.characters]\nextra_invalid = "- "\n')
 
-    config = parse_config(Path(config_file.name), cli_cfg, Path(""), None, None, [])
+    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, FastPath.from_str("."), None, None, set())
 
     assert config.check.characters.extra_invalid.pattern == "- "
 
@@ -68,7 +69,7 @@ def test_should_parse_checks():
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b'[check]\nrun = ["CHARACTERS", "LENGTH"]\n')
 
-    config = parse_config(Path(config_file.name), cli_cfg, Path(""), None, None, [])
+    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, FastPath.from_str("."), None, None, set())
 
     assert config.check.run == Check.CHARACTERS | Check.LENGTH
 
@@ -76,27 +77,27 @@ def test_should_parse_checks():
 
 
 def test_should_find_empty_directories():
-    path = PathMock("/", file_system=fs([fs.D("a"), fs.D("b", [fs.F("c"), fs.D("d")])]))
+    path = PathMock(absolute=True, file_system=fs([fs.D("a"), fs.D("b", [fs.F("c"), fs.D("d")])]))
 
     invalids = list(invalid_paths(Config.from_dict(DEFAULT_CONFIG(path)), checks=Check.EMPTY))
 
-    assert invalids == [PathEmptyDiagnostic(Path("/b/d")), PathEmptyDiagnostic(Path("/a"))]
+    assert invalids == [PathEmptyDiagnostic(FastPath.from_str("/b/d")), PathEmptyDiagnostic(FastPath.from_str("/a"))]
 
 
 def test_should_convert_permission_denied_error_to_diagnostic():
-    path = PathMock("/", file_system=fs([fs.D("a"), fs.D("b", mode=0o000)]))
+    path = PathMock(absolute=True, file_system=fs([fs.D("a"), fs.D("b", mode=0o000)]))
 
     invalids = list(invalid_paths(Config.from_dict(DEFAULT_CONFIG(path)), checks=Check.NO_CHECK))
 
     assert len(invalids) == 1
     assert isinstance(invalids[0], PathErrorDiagnostic)
-    assert invalids[0].path == Path("/b")
+    assert invalids[0].path == FastPath.from_str("/b")
     assert type(invalids[0].error) is PermissionError
     assert invalids[0].error.filename == "/b"
 
 
 def test_should_rename_file_with_dots():
-    path = PathMock("/", file_system=fs([fs.F("file.path.dots.txt")]))
+    path = PathMock(absolute=True, file_system=fs([fs.F("file.path.dots.txt")]))
 
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b"""[check]
@@ -107,33 +108,33 @@ extra_invalid = "."
 replacement = "_"
 """)
 
-    config = parse_config(Path(config_file.name), cli_cfg, path, None, None, [])
+    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, path, None, None, set())
 
     diagnostics = list(rename(config, Counter()))
 
     assert len(diagnostics) == 1
     assert isinstance(diagnostics[0], PathCharactersReplaceDiagnostic)
-    assert diagnostics[0].path == Path("/file.path.dots.txt")
-    assert diagnostics[0].new_path == Path("/file_path_dots.txt")
+    assert diagnostics[0].path == FastPath.from_str("/file.path.dots.txt")
+    assert diagnostics[0].new_path == FastPath.from_str("/file_path_dots.txt")
 
     Path(config_file.name).unlink()
 
 
 def test_rename_should_avoid_name_collision():
-    path = PathMock("/", file_system=fs([fs.F("b?"), fs.D("b_", [fs.F("c>test.txt"), fs.F("c_test.txt")])]))
+    path = PathMock(absolute=True, file_system=fs([fs.F("b?"), fs.D("b_", [fs.F("c>test.txt"), fs.F("c_test.txt")])]))
 
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b"""[check]
 run = ["CHARACTERS"]
 """)
 
-    config = parse_config(Path(config_file.name), cli_cfg, path, None, None, [])
+    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, path, None, None, set())
     diagnostics = list(rename(config, Counter()))
 
     assert len(diagnostics) == 2
     assert isinstance(diagnostics[0], PathCharactersReplaceDiagnostic)
     assert isinstance(diagnostics[1], PathCharactersReplaceDiagnostic)
-    assert diagnostics[0].path == Path("/b_/c>test.txt")
-    assert diagnostics[0].new_path == Path("/b_/c_test(1).txt")
-    assert diagnostics[1].path == Path("/b?")
-    assert diagnostics[1].new_path == Path("/b_(1)")
+    assert diagnostics[0].path == FastPath.from_str("/b_/c>test.txt")
+    assert diagnostics[0].new_path == FastPath.from_str("/b_/c_test(1).txt")
+    assert diagnostics[1].path == FastPath.from_str("/b?")
+    assert diagnostics[1].new_path == FastPath.from_str("/b_(1)")

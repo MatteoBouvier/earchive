@@ -1,7 +1,8 @@
 import sys
 from enum import StrEnum, auto
-from pathlib import Path
 from typing import Self, override
+
+from earchive.utils.path import FastPath
 
 
 class OS(StrEnum):
@@ -18,7 +19,7 @@ class OS(StrEnum):
         return super()._missing_(value)
 
 
-def get_operating_system(path: Path) -> OS:
+def get_operating_system(path: FastPath) -> OS:
     # TODO: get OS of distant server
     del path
 

@@ -4,10 +4,10 @@ import re
 from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum, IntFlag, StrEnum, auto
-from pathlib import Path
 from typing import TYPE_CHECKING, Self, cast, override
 
 from earchive.commands.check.config.substitution import RegexPattern
+from earchive.utils.path import FastPath
 
 if TYPE_CHECKING:
     pass
@@ -76,7 +76,7 @@ class Diagnostic(Enum):
 
 @dataclass
 class PathDiagnostic(ABC):
-    path: Path
+    path: FastPath
     kind: Diagnostic
 
 
@@ -93,14 +93,14 @@ class PathInvalidNameDiagnostic(PathDiagnostic):
 
 @dataclass
 class PathRenameDiagnostic(PathDiagnostic):
-    new_path: Path
+    new_path: FastPath
     patterns: list[tuple[RegexPattern, str]] = field(kw_only=True)
     kind: Diagnostic = field(init=False, default=Diagnostic.RENAME_MATCH)
 
 
 @dataclass
 class PathCharactersReplaceDiagnostic(PathCharactersDiagnostic):
-    new_path: Path
+    new_path: FastPath
     kind: Diagnostic = field(init=False, default=Diagnostic.RENAME_INVALID)
 
 
