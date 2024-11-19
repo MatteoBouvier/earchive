@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import re
 import sys
 from typing import Any, Callable, cast
@@ -13,7 +14,6 @@ from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
 from earchive.commands.check.config.names import ASCII, COLLISION, HEADER, ConfigDict
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
-from earchive.commands.check.utils import path_len
 from earchive.utils.fs import FS, get_file_system
 from earchive.utils.os import OS, get_operating_system
 from earchive.utils.path import FastPath
@@ -65,7 +65,7 @@ def _destructure(data: dict[Any, Any], root_header: HEADER = HEADER.NO_HEADER) -
     return elements
 
 
-def _update_config_from_file(config: ConfigDict, path: FastPath) -> None:
+def _update_config_from_file(config: ConfigDict, path: Path) -> None:
     with open(path, "rb") as config_file:
         try:
             data = tomllib.load(config_file)
@@ -85,14 +85,14 @@ def _update_config_from_file(config: ConfigDict, path: FastPath) -> None:
                 case HEADER.CHECK_RUN:
                     config.check.run = as_enum(Check)(value, "run")
 
-                case HEADER.CHECK_PATH:
-                    config.check.path = as_path(value, "path")
-
                 case HEADER.CHECK_OPERATING_SYSTEM:
                     config.check.operating_system = as_enum(OS)(value, "operating_system")
 
                 case HEADER.CHECK_FILE_SYSTEM:
                     config.check.file_system = as_enum(FS)(value, "file_system")
+
+                case HEADER.CHECK_PATH:
+                    config.check.path = as_path(value, "path", config.check.operating_system)
 
                 case HEADER.CHECK_BASE_PATH_LENGTH:
                     config.check.base_path_length = as_uint(value, "base_path_length")
@@ -126,20 +126,22 @@ def _update_config_from_file(config: ConfigDict, path: FastPath) -> None:
 
 
 def _update_config_from_cli(
-    config: ConfigDict, cli_config: CliConfig, checks: Check | None, dest_path: FastPath | None, exclude: set[FastPath]
+    config: ConfigDict, cli_config: CliConfig, checks: Check | None, dest_path: Path | None, exclude: set[Path]
 ) -> None:
     if checks is not None:
         config.check.run = checks
 
     cli_config.update_config(config)
 
-    if isinstance(dest_path, FastPath):
+    if isinstance(dest_path, Path):
         if config.check.operating_system is OS.AUTO:
             try:
                 config.check.operating_system = get_operating_system(dest_path)
 
             except ValueError as e:
                 raise err.unknown_operating_system(e)
+
+            config.check.path.platform = config.check.operating_system
 
         if config.check.file_system is FS.AUTO:
             try:
@@ -152,7 +154,7 @@ def _update_config_from_cli(
                 raise err.os_error(str(e))
 
         if config.check.base_path_length < 0:
-            config.check.base_path_length = path_len(dest_path, config.check.operating_system) + 1
+            config.check.base_path_length = len(str(dest_path)) + 1
 
         if config.check.max_path_length < 0:
             if sys.platform == "win32":
@@ -186,16 +188,16 @@ def _update_config_from_cli(
         if config.check.max_name_length < 0:
             config.check.max_name_length = CONFIG_FILE_SYSTEMS[config.check.file_system].max_name_length
 
-    config.exclude |= set(exclude)
+    config.exclude |= set(FastPath.from_str(str(path), config.check.operating_system) for path in exclude)
 
 
 def parse_config(
-    path: FastPath | None,
+    path: Path | None,
     cli_config: CliConfig,
-    check_path: FastPath,
-    dest_path: FastPath | None,
+    check_path: Path,
+    dest_path: Path | None,
     checks: Check | None,
-    exclude: set[FastPath],
+    exclude: set[Path],
 ) -> Config:
     r"""
     Merge config options from the cli and from a file.

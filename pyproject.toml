@@ -25,6 +25,9 @@ dev = ["pytest", "vulture", "pre-commit", "mypy", "scalene", "ruff"]
 [tool.poetry.scripts]
 earchive = "earchive.main:main"
 
+[tool.poetry.group.dev.dependencies]
+yelp-gprof2dot = "^1.2.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

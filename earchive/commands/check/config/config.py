@@ -28,17 +28,14 @@ class MultiPattern:
         self.patterns: list[re.Pattern[str]] = [p for p in patterns if p.pattern != ""]
         assert len(self.patterns)
 
-    @staticmethod
-    def _unique_matches(matches: list[re.Match[str]]) -> list[re.Match[str]]:
-        seen: set[tuple[int, int]] = set()
-        return [m for m in matches if (span := m.span()) not in seen and (seen.add(span) or True)]
-
     def finditer(self, string: str, pos: int = 0, endpos: int = sys.maxsize) -> list[re.Match[str]]:
-        matches: list[re.Match[str]] = []
-        for pattern in self.patterns:
-            matches.extend(pattern.finditer(string, pos, endpos))
-
-        return self._unique_matches(matches)
+        seen: set[tuple[int, int]] = set()
+        return [
+            match
+            for pattern in self.patterns
+            for match in pattern.finditer(string, pos, endpos)
+            if (span := match.span()) not in seen and (seen.add(span) or True)  # get only unique matches
+        ]
 
     def match(self, string: str, pos: int = 0, endpos: int = sys.maxsize) -> re.Match[str] | None:
         for pattern in self.patterns:

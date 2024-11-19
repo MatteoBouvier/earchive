@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Callable
 
 import earchive.errors as err
+from earchive.utils.os import OS
 from earchive.utils.path import FastPath
 
 
@@ -64,8 +65,8 @@ def as_enum[E: Enum](enum: type[E]) -> Callable[[str, str], E]:
     return inner
 
 
-def as_path(value: str, option: str) -> FastPath:
+def as_path(value: str, option: str, operating_system: OS) -> FastPath:
     try:
-        return FastPath.from_str(value)
+        return FastPath.from_str(value, operating_system)
     except TypeError:
         err.assert_option(err.Raise(option, value, expected="file path"))

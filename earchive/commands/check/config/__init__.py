@@ -4,7 +4,6 @@ from earchive.commands.check.config.names import (
     BEHAVIOR_CONFIG,
     CHECK_CHARACTERS_CONFIG,
     CHECK_CONFIG,
-    COLLISION,
     HEADER,
 )
 from earchive.commands.check.config.parse import parse_cli_config, parse_config
@@ -17,7 +16,6 @@ __all__ = [
     "Config",
     "BEHAVIOR_CONFIG",
     "CHECK_CONFIG",
-    "COLLISION",
     "RegexPattern",
     "CHECK_CHARACTERS_CONFIG",
     "ASCII",

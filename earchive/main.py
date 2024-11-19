@@ -97,8 +97,8 @@ class _parse_OutputKind(click.ParamType):
 @app.command(no_args_is_help=True)
 def check(
     path: Annotated[
-        FastPath,
-        typer.Argument(exists=True, show_default=False, parser=lambda s: FastPath.from_str(s), help="Path to check"),
+        Path,
+        typer.Argument(exists=True, show_default=False, help="Path to check"),
     ],
     doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
     fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
@@ -106,18 +106,17 @@ def check(
     options: Annotated[list[str], typer.Option("-o", help="Configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     behavior_options: Annotated[list[str], typer.Option("-O", help="Behavior configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     destination: Annotated[
-        Optional[FastPath],
+        Optional[Path],
         typer.Option(
             exists=True,
             file_okay=False,
             writable=True,
-            parser=lambda s: FastPath.from_str(s),
             help="Destination path where files would be copied to",
         ),
     ] = None,
     config: Annotated[
-        Optional[FastPath],
-        typer.Option(exists=True, dir_okay=False, parser=lambda s: FastPath.from_str(s), help="Path to config file"),
+        Optional[Path],
+        typer.Option(exists=True, dir_okay=False, help="Path to config file"),
     ] = None,
     make_config: Annotated[
         bool, typer.Option("--make-config", show_default=False, help="Create a config file from supplied options")
@@ -129,9 +128,7 @@ def check(
             help="Output format. For csv, an output file can be specified with 'csv=path/to/output.csv'",
         ),
     ] = OutputKind.cli,
-    exclude: Annotated[
-        list[FastPath], typer.Option(parser=lambda s: FastPath.from_str(s), help="Exclude path from cheked paths")
-    ] = [],  # pyright: ignore[reportCallInDefaultInitializer]
+    exclude: Annotated[list[Path], typer.Option(help="Exclude path from cheked paths")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
     check_empty_dirs: Annotated[
         Optional[bool],
         typer.Option(

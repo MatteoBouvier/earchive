@@ -3,6 +3,8 @@ import unicodedata
 from dataclasses import dataclass
 from typing import override
 
+_ACCENTS = re.compile(r"[\u0300-\u036f]")  # all accents (unicode combining diacritical marks)
+
 
 @dataclass(frozen=True, repr=False)
 class RegexPattern:
@@ -18,6 +20,5 @@ class RegexPattern:
         if self.accent_sensitive:
             return string
 
-        # remove all accents (unicode combining diacritical marks) from string
-        return re.sub(r"[\u0300-\u036f]", "", unicodedata.normalize("NFD", string))
-
+        # remove all accents from string
+        return _ACCENTS.sub("", unicodedata.normalize("NFD", string))

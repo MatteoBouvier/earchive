@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 
 from earchive.commands.check.config.names import (
@@ -26,12 +27,12 @@ DEFAULT_CHECK_CHARACTERS = CHECK_CHARACTERS_CONFIG(
 )
 
 
-def DEFAULT_CONFIG(check_path: FastPath) -> ConfigDict:
+def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
     return ConfigDict(
         behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT, dry_run=False),
         check=CHECK_CONFIG(
             run=DEFAULT_CHECK_RUN,
-            path=check_path,
+            path=FastPath.from_str(str(check_path), DEFAULT_CHECK_OS),
             operating_system=DEFAULT_CHECK_OS,
             file_system=DEFAULT_CHECK_FS,
             base_path_length=DEFAULT_CHECK_BASE_PATH_LEN,

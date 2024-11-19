@@ -40,5 +40,7 @@ python -m earchive --help
 ```
 
 
---> NTFS : 65535
---> NTFS(Windows) : 255
+# TODO:
+- fix progress counter (does not actually count # processed files)
+- fs case sensitivity
+- unicode PUA

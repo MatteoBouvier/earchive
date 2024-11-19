@@ -8,6 +8,7 @@ from typing import Any, Self, override
 
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
+from earchive.names import COLLISION
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
 from earchive.utils.path import FastPath
@@ -58,11 +59,6 @@ class ASCII(StrEnum):
     PRINT = auto()
     ACCENTS = auto()
     NO = auto()
-
-
-class COLLISION(StrEnum):
-    SKIP = auto()
-    INCREMENT = auto()
 
 
 @dataclass

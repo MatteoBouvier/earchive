@@ -865,10 +865,21 @@ files = [
 [package.extras]
 test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
 
+[[package]]
+name = "yelp-gprof2dot"
+version = "1.2.0"
+description = "Generate a dot graph from the output of python profilers."
+optional = false
+python-versions = "*"
+files = [
+    {file = "yelp-gprof2dot-1.2.0.tar.gz", hash = "sha256:632daff6cca279d1a69127e9f8741acc3aa16a7c838f600f141c4f443dd9580b"},
+    {file = "yelp_gprof2dot-1.2.0-py3-none-any.whl", hash = "sha256:04533fb17d85fcb0dde5ef65c747769273414fee6b7cb1e36e8282d36cdc93bf"},
+]
+
 [extras]
 dev = ["mypy", "pre-commit", "pytest", "ruff", "scalene", "vulture"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">3.11"
-content-hash = "aa61fe297ff1c30895a828facf905fcb57accf24cbf493cf9dc8a005a7fed0c4"
+python-versions = "^3.12"
+content-hash = "a8c6f0a8afbfa6faa873f94a6e7ffea6aa94bdfefb4f8da38d5c113e0051324b"
