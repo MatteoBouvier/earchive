@@ -3,11 +3,9 @@ from __future__ import annotations
 import itertools as it
 import re
 import shutil
-from collections.abc import Iterable
 from typing import Literal, NamedTuple, final
 
-from rich.console import Console, RenderableType, RenderResult
-from rich.segment import Segment
+from rich.console import Console, RenderResult
 from rich.text import Text
 
 from earchive.commands.check.config import Config
@@ -255,9 +253,7 @@ class Grid:
                 console.no_color = False
 
             else:
-                progress: Bar[Iterable[RenderableType | Segment]] = Bar(
-                    description="saving ...", multiplier=100, total=len(self.rows), percent=True
-                )
+                progress: Bar = Bar(description="saving ...", multiplier=100, total=len(self.rows), percent=True)
                 with open(self.kind.path_, mode="w") as file:
                     for lines in progress(it.batched(self._csv_repr(), n=100)):
                         file.writelines("%s\n" % line for line in lines)

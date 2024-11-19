@@ -1,5 +1,3 @@
-from typing import Any
-
 from rich.panel import Panel
 
 import earchive.errors as err
@@ -15,7 +13,7 @@ from earchive.utils.progress import Bar
 
 def _check_fix(config: Config, messages: Grid, output: OutputKind) -> Counter:
     counter = Counter()
-    progress: Bar[Any] = Bar(description="processing files ...")
+    progress: Bar = Bar(description="processing files ...")
 
     for message in fix_invalid_paths(config, progress, counter):
         messages.add_row(message)
@@ -25,7 +23,10 @@ def _check_fix(config: Config, messages: Grid, output: OutputKind) -> Counter:
     if output == OutputKind.cli:
         console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
         if counter.value:
-            console.print(f"{counter.value} invalid path{plural(counter.value)} could not be fixed.", style=ERROR_STYLE)
+            console.print(
+                f"{counter.value} invalid path{plural(counter.value)} could not be fixed out of {progress.counter}",
+                style=ERROR_STYLE,
+            )
         else:
             console.print("All invalid paths were fixed.", style=SUCCESS_STYLE)
 
@@ -34,7 +35,7 @@ def _check_fix(config: Config, messages: Grid, output: OutputKind) -> Counter:
 
 def _check_analyze(config: Config, messages: Grid, output: OutputKind) -> Counter:
     counter = Counter()
-    progress: Bar[Any] = Bar(description="processing files ...")
+    progress: Bar = Bar(description="processing files ...")
 
     for invalid_data in invalid_paths(config, progress=progress):
         messages.add_row(invalid_data)

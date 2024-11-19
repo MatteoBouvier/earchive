@@ -41,6 +41,6 @@ python -m earchive --help
 
 
 # TODO:
-- fix progress counter (does not actually count # processed files)
+- output cli option: show only not fixed
 - fs case sensitivity
 - unicode PUA
