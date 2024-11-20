@@ -6,8 +6,9 @@ from rich.highlighter import RegexHighlighter
 from rich.text import Text
 from rich.theme import Theme
 
-from earchive.commands.check.config.names import ASCII, COLLISION
-from earchive.commands.check.names import Check
+from earchive.commands.check.config.names import ASCII
+from earchive.commands.check.names import Check, OutputKind
+from earchive.names import COLLISION
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
 
@@ -148,10 +149,13 @@ check_doc = Text.assemble(
         ),
         P(
             "--output <format>",
-            "\n\t\tSelect an output <format. <format> can be [silent|cli|csv].\n",
-            "\t\t- silent only prints the number of invalid paths.\n",
-            "\t\t- cli is more user-friendly and uses colors to clearly point at invalid path portions.\n",
-            "\t\t- csv is easier to parse and to store.\n",
+            "\n\t\tSelect an output <format. <format> can be",
+            _EnumList(OutputKind),
+            ".\n",
+            "\t\t- silent   only prints the number of invalid paths.\n",
+            "\t\t- cli      is more user-friendly and uses colors to clearly point at invalid path portions.\n",
+            "\t\t- unfixed  same as `cli`, but shows only paths that could not be fixed (only valid when using --fix).\n",
+            "\t\t- csv      is easier to parse and to store.\n",
             "\t\tFor writing the csv output directly to a file, you can specify a path as 'csv=<path>'.\n",
         ),
         P(

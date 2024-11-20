@@ -14,6 +14,7 @@ from earchive.commands.cli import show_tree
 from earchive.commands.compare import compare as compare_paths
 from earchive.commands.copy import copy_structure
 from earchive.doc import print_doc
+from earchive.utils.os import OS
 from earchive.utils.path import FastPath
 from earchive.utils.tree import Node
 
@@ -94,13 +95,21 @@ class _parse_OutputKind(click.ParamType):
         return kind
 
 
+def maybe_print_doc(doc: bool) -> bool:
+    if doc:
+        print_doc("check")
+        raise typer.Exit()
+
+    return doc
+
+
 @app.command(no_args_is_help=True)
 def check(
     path: Annotated[
         Path,
         typer.Argument(exists=True, show_default=False, help="Path to check"),
     ],
-    doc: Annotated[bool, typer.Option("--doc", help="Show documentation and exit")] = False,
+    doc: Annotated[bool, typer.Option("--doc", callback=maybe_print_doc, help="Show documentation and exit")] = False,
     fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
     check_all: Annotated[bool, typer.Option("--all", help="Perform all available checks")] = False,
     options: Annotated[list[str], typer.Option("-o", help="Configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
@@ -158,9 +167,7 @@ def check(
     ] = None,
 ) -> None:
     r""":mag: [blue]Check[/blue] for invalid paths on a target file system and fix them."""
-    if doc:
-        print_doc("check")
-        raise typer.Exit()
+    del doc
 
     with err.raise_typer():
         cli_config = parse_cli_config(options + ["behavior:" + bo for bo in behavior_options])
@@ -182,7 +189,12 @@ def check(
 def analyze(
     path: Annotated[
         FastPath,
-        typer.Argument(exists=True, show_default=False, parser=lambda s: FastPath.from_str(s), help="Path to analyze"),
+        typer.Argument(
+            exists=True,
+            show_default=False,
+            parser=lambda s: FastPath.from_str(s, OS(sys.platform)),
+            help="Path to analyze",
+        ),
     ],
 ) -> None:
     r""":mag: [blue]Analyze[/blue] a file or directory and list attributes."""

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from collections.abc import Generator
+from dataclasses import dataclass
 from itertools import chain
 
 import earchive.errors as err

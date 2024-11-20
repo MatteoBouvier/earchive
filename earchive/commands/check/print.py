@@ -240,7 +240,7 @@ class Grid:
             yield row_text
 
     def print(self) -> None:
-        if self.kind == OutputKind.cli:
+        if self.kind in (OutputKind.cli, OutputKind.unfixed):
             console.print(*it.islice(self._cli_repr(), 10_000), sep="\n")
 
             if len(self.rows) > 10_000:
@@ -261,6 +261,22 @@ class Grid:
         else:
             return
 
+    def _skip_row(self, diagnostic: PathDiagnostic) -> bool:
+        return self.kind == OutputKind.silent or (
+            self.kind == OutputKind.unfixed
+            and self.mode == "fix"
+            and not isinstance(
+                diagnostic,
+                (
+                    PathCharactersDiagnostic,
+                    PathInvalidNameDiagnostic,
+                    PathFilenameLengthDiagnostic,
+                    PathLengthDiagnostic,
+                    PathErrorDiagnostic,
+                ),
+            )
+        )
+
     def add_row(self, row: PathDiagnostic) -> None:
-        if self.kind != OutputKind.silent:
+        if not self._skip_row(row):
             self.rows.append(row)

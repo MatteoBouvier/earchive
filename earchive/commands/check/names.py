@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 class OutputKind(StrEnum):
     silent = auto()
     cli = auto()
+    unfixed = auto()
     csv = auto()
 
     def __init__(self, _: object) -> None:
@@ -99,8 +100,9 @@ class PathRenameDiagnostic(PathDiagnostic):
 
 
 @dataclass
-class PathCharactersReplaceDiagnostic(PathCharactersDiagnostic):
+class PathCharactersReplaceDiagnostic(PathDiagnostic):
     new_path: FastPath
+    matches: list[re.Match[str]] = field(kw_only=True)
     kind: Diagnostic = field(init=False, default=Diagnostic.RENAME_INVALID)
 
 

@@ -41,6 +41,6 @@ python -m earchive --help
 
 
 # TODO:
-- output cli option: show only not fixed
+- french doc
 - fs case sensitivity
 - unicode PUA

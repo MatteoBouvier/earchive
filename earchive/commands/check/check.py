@@ -20,7 +20,7 @@ def _check_fix(config: Config, messages: Grid, output: OutputKind) -> Counter:
 
     messages.print()
 
-    if output == OutputKind.cli:
+    if output in (OutputKind.cli, OutputKind.unfixed):
         console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
         if counter.value:
             console.print(
@@ -43,7 +43,7 @@ def _check_analyze(config: Config, messages: Grid, output: OutputKind) -> Counte
 
     messages.print()
 
-    if output == OutputKind.cli:
+    if output in (OutputKind.cli, OutputKind.unfixed):
         console.print(f"\nChecked: {', '.join([CheckRepr[check] for check in config.check.run])}")
         console.print(
             f"Found {counter.value} invalid path{plural(counter.value)} out of {progress.counter}",
