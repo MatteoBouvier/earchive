@@ -2,7 +2,8 @@
 
 import sys
 from pathlib import Path
-from typing import Annotated, Any, Never, Optional, final, override
+from typing import Annotated, Any, Optional, final, override
+from importlib import metadata
 
 import click
 
@@ -96,7 +97,7 @@ class _parse_OutputKind(click.ParamType):
         return kind
 
 
-def maybe_print_doc(lang: Language | None) -> Never:
+def maybe_print_doc(lang: Language | None) -> None:
     if lang is not None:
         print_doc("check", lang)
         raise typer.Exit()
@@ -221,6 +222,12 @@ def copy(
         dst.mkdir(parents=True)
 
     copy_structure(src, dst)
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(version: Annotated[bool, typer.Option("--version")] = False) -> None:
+    if version:
+        print("EArchive version ", metadata.version("earchive"))
 
 
 def main() -> None:

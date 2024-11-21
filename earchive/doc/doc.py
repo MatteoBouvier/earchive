@@ -26,4 +26,4 @@ def print_doc(which: Literal["check"], lang: Language = Language.en):
             _console.print(check_doc(lang))
 
         else:
-            raise RuntimeError("Could not find documentation")
+            raise RuntimeError("Could not find documentation")  # pyright: ignore[reportUnreachable]
