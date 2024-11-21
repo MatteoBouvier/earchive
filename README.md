@@ -44,4 +44,3 @@ python -m earchive --help
 - fs case sensitivity
 - unicode PUA
 - add --version
-- add py.typed
