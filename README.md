@@ -6,9 +6,9 @@ Tools can be executed as : `earchive <tool>`.
 
 # Tools
 Available tools are :
-    - check, to check for invalid paths in a file system
-    - copy, to copy the structure of a directory as only empty files
-    - analyze, to get attributes of a directory
+- check, to check for invalid paths in a file system
+- copy, to copy the structure of a directory as only empty files
+- analyze, to get attributes of a directory
 
 More information about each tool can be obtained by running `earchive <tool> --help`
 
