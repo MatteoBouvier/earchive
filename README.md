@@ -41,6 +41,7 @@ python -m earchive --help
 
 
 # TODO:
-- french doc
 - fs case sensitivity
 - unicode PUA
+- add --version
+- add py.typed

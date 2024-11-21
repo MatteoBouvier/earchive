@@ -6,10 +6,10 @@ from sys import stderr
 from types import TracebackType
 from typing import Any, Never, final, overload, override
 
-import typer
 from rich import print as rprint
 from rich.text import Text
 
+import earchive.lib.typer as typer
 from earchive.names import SupportsFormat
 
 

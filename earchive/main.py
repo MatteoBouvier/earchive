@@ -2,18 +2,19 @@
 
 import sys
 from pathlib import Path
-from typing import Annotated, Any, Optional, final, override
+from typing import Annotated, Any, Never, Optional, final, override
 
 import click
-import typer
 
 import earchive.errors as err
+import earchive.lib.typer as typer
 from earchive.commands.analyze import analyze_path
 from earchive.commands.check import Check, OutputKind, check_path, parse_cli_config, parse_config
 from earchive.commands.cli import show_tree
 from earchive.commands.compare import compare as compare_paths
 from earchive.commands.copy import copy_structure
-from earchive.doc import print_doc
+from earchive.doc import Language
+from earchive.doc.doc import print_doc
 from earchive.utils.os import OS
 from earchive.utils.path import FastPath
 from earchive.utils.tree import Node
@@ -95,12 +96,10 @@ class _parse_OutputKind(click.ParamType):
         return kind
 
 
-def maybe_print_doc(doc: bool) -> bool:
-    if doc:
-        print_doc("check")
+def maybe_print_doc(lang: Language | None) -> Never:
+    if lang is not None:
+        print_doc("check", lang)
         raise typer.Exit()
-
-    return doc
 
 
 @app.command(no_args_is_help=True)
@@ -109,7 +108,10 @@ def check(
         Path,
         typer.Argument(exists=True, show_default=False, help="Path to check"),
     ],
-    doc: Annotated[bool, typer.Option("--doc", callback=maybe_print_doc, help="Show documentation and exit")] = False,
+    doc: Annotated[
+        bool | Language,
+        typer.Option(callback=maybe_print_doc, help="Show documentation and exit"),
+    ] = Language.en,
     fix: Annotated[bool, typer.Option("--fix", help="Fix paths to conform with rules of target file system")] = False,
     check_all: Annotated[bool, typer.Option("--all", help="Perform all available checks")] = False,
     options: Annotated[list[str], typer.Option("-o", help="Configuration options")] = [],  # pyright: ignore[reportCallInDefaultInitializer]
