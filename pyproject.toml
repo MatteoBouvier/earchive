@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "earchive"
-version = "0.2.0"
+version = "0.2.1"
 description = "Set of tools for electronic archivists"
 authors = ["Matteo Bouvier <matteo.bouvier@hotmail.fr>"]
 readme = "README.md"
@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.12"
 rich = "^13.7.0"
 natsort = "^8.4.0"
+click = "^8.1.7"
+psutil = "^6.1.0"
 
 # optional
 pytest = { version = "^7.4.4", optional=true }
@@ -18,7 +20,6 @@ mypy = { version = "^1.8.0", optional=true }
 scalene = { version = "^1.5.45", optional=true }
 ruff = { version = "^0.6.9", optional=true }
 yelp-gprof2dot = { version = "^1.2.0", optional=true }
-click = "^8.1.7"
 
 [tool.poetry.extras]
 dev = ["pytest", "vulture", "pre-commit", "mypy", "scalene", "ruff", "yelp-gprof2dot"]

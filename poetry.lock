@@ -460,7 +460,7 @@ virtualenv = ">=20.10.0"
 name = "psutil"
 version = "6.1.0"
 description = "Cross-platform lib for process and system monitoring in Python."
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 files = [
     {file = "psutil-6.1.0-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:ff34df86226c0227c52f38b919213157588a678d049688eded74c76c8ba4a5d0"},
@@ -863,4 +863,4 @@ dev = ["mypy", "pre-commit", "pytest", "ruff", "scalene", "vulture", "yelp-gprof
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "d7be568ef2082945055cfd197555408a3ae508b9e29d2b9b52cbc2fab7d342d9"
+content-hash = "0d1e1bb3104a6b3881f8e245b7bcaf8fb16bc7822bbd768f56b7fe9f65432db2"
