@@ -26,7 +26,7 @@ def get_file_system(path: Path) -> FS:
     partitions = {part.mountpoint: part.fstype for part in psutil.disk_partitions()}
 
     for p in it.chain([path], path.parents):
-        if fs := partitions.get(str(p), None):
+        if (fs := partitions.get(str(p), None)) is not None:
             return FS(fs)
 
     raise OSError(f"Could not determine file system of path '{path}'")

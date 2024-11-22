@@ -191,11 +191,10 @@ def check(
 @app.command()
 def analyze(
     path: Annotated[
-        FastPath,
+        Path,
         typer.Argument(
             exists=True,
             show_default=False,
-            parser=lambda s: FastPath.from_str(s, OS(sys.platform)),
             help="Path to analyze",
         ),
     ],
