@@ -11,9 +11,10 @@ from earchive.commands.check.config.cast import as_bool, as_bool_or_uint, as_enu
 from earchive.commands.check.config.config import CliConfig, Config
 from earchive.commands.check.config.default import DEFAULT_CONFIG
 from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
-from earchive.commands.check.config.names import ASCII, COLLISION, HEADER, ConfigDict
+from earchive.commands.check.config.names import ASCII, HEADER, ConfigDict
 from earchive.commands.check.config.substitution import RegexPattern
 from earchive.commands.check.names import Check
+from earchive.names import COLLISION
 from earchive.utils.fs import FS, get_file_system
 from earchive.utils.os import OS, get_operating_system
 from earchive.utils.path import FastPath
@@ -188,7 +189,7 @@ def _update_config_from_cli(
         if config.check.max_name_length < 0:
             config.check.max_name_length = CONFIG_FILE_SYSTEMS[config.check.file_system].max_name_length
 
-    config.exclude |= set(FastPath.from_str(str(path), config.check.operating_system) for path in exclude)
+    config.exclude |= set(FastPath.from_path(path, config.check.operating_system) for path in exclude)
 
 
 def parse_config(

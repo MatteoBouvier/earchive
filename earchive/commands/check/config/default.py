@@ -32,7 +32,7 @@ def DEFAULT_CONFIG(check_path: Path) -> ConfigDict:
         behavior=BEHAVIOR_CONFIG(collision=COLLISION.INCREMENT, dry_run=False),
         check=CHECK_CONFIG(
             run=DEFAULT_CHECK_RUN,
-            path=FastPath.from_str(str(check_path), DEFAULT_CHECK_OS),
+            path=FastPath.from_path(check_path, DEFAULT_CHECK_OS),
             operating_system=DEFAULT_CHECK_OS,
             file_system=DEFAULT_CHECK_FS,
             base_path_length=DEFAULT_CHECK_BASE_PATH_LEN,

@@ -9,6 +9,8 @@ from dataclasses import InitVar, dataclass, field
 from types import TracebackType
 from typing import Callable, Never, Self, cast, final, override
 
+from earchive.names import COLLISION
+from earchive.utils.os import OS
 from earchive.utils.path import FastPath
 
 type StrPath = str | os.PathLike[str]
@@ -190,7 +192,7 @@ class ScandirIterator(Iterator[DirEntry], AbstractContextManager):  # pyright: i
     @override
     def __enter__(self) -> Self:
         self.it = iter(self.file.list_children())
-        return super().__enter__()
+        return super().__enter__()  # pyright: ignore[reportUnknownVariableType]
 
     @override
     def __next__(self) -> DirEntry:
@@ -340,7 +342,7 @@ class FileSystem:
                 stack.append((top_, dirs, nondirs))
                 # Traverse into sub-directories
                 for new_path in reversed(walk_dirs):
-                    stack.append(PathMock.from_str(new_path, file_system=self))
+                    stack.append(PathMock.from_str(new_path, OS.LINUX, file_system=self))
 
     def rename(self, src_path: PathMock, dst_path: PathMock) -> None:
         destination = self.get(dst_path.parent)
@@ -366,13 +368,13 @@ class FileSystem:
 
 class PathMock(FastPath):
     def __init__(self, *segments: str, absolute: bool, file_system: FileSystem) -> None:
-        super().__init__(*segments, absolute=absolute)
+        super().__init__(*segments, absolute=absolute, platform=OS.LINUX, drive="")
         self.fs: FileSystem = file_system
 
     @classmethod
     @override
-    def from_str(cls, path: str, file_system: FileSystem) -> PathMock:
-        fast_path = FastPath.from_str(path)
+    def from_str(cls, path: str, platform: OS, file_system: FileSystem) -> PathMock:  # pyright: ignore[reportIncompatibleMethodOverride]
+        fast_path = FastPath.from_str(path, platform)
         return PathMock(*fast_path.segments, absolute=fast_path.is_absolute(), file_system=file_system)
 
     @override
@@ -419,28 +421,36 @@ class PathMock(FastPath):
         yield from self.fs.walk(self, top_down, on_error, follow_symlinks)
 
     @override
-    def iterdir(self) -> list[str]:
-        return [str(self.parent) + f.name for f in self.fs.listdir(self)]
-
-    @override
     def with_stem(self, stem: str) -> PathMock:
         return PathMock(*self.segments[:-1], stem + self.suffix, absolute=self._absolute, file_system=self.fs)
 
     @override
-    def rename(self, dst: str | os.PathLike[str]) -> None:
-        dst = PathMock.from_str(str(dst), file_system=self.fs)
-        self.fs.rename(self, dst)
+    def rename(self, target: PathMock, collision: COLLISION, do: bool = True) -> tuple[bool, PathMock]:  # pyright: ignore[reportIncompatibleMethodOverride]
+        if target.exists():
+            if collision is COLLISION.SKIP:
+                return (False, self)
+
+            # add `(<nb>)` to file name
+            next_nb = (
+                max([int(g.stem.split("(")[-1][:-1]) for g in self.parent.glob(self.stem + "(*)" + self.suffix)] + [0])
+                + 1
+            )
+            target = target.with_stem(f"{target.stem}({next_nb})")
+
+        if do:
+            self.fs.rename(self, target)
+
+        return (True, target)
 
     @override
     def glob(self, pattern: str) -> Generator[PathMock, None, None]:
         pattern = pattern.replace("(", r"\(").replace(")", r"\)").replace("*", ".*")
         for file in self.fs.listdir(self):
             if re.match(pattern, file.name):
-                yield PathMock.from_str(file.absolute_path, file_system=self.fs)
+                yield PathMock.from_str(file.absolute_path, OS.LINUX, file_system=self.fs)
 
-    @override
     def resolve(self, strict: bool = False) -> PathMock:
-        if self._absolute:
-            return self
-        raise NotImplementedError
-        # return FastPath.from_str(os.path.realpath(self, strict=strict), file_system=self.fs)
+        del strict
+        if not self._absolute:
+            raise NotImplementedError
+        return self

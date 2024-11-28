@@ -8,9 +8,10 @@ from typing import Any, NotRequired, TypedDict, override
 
 import earchive.errors as err
 from earchive.commands.check.config.fs import CONFIG_FILE_SYSTEMS
-from earchive.commands.check.config.names import ASCII, BEHAVIOR_CONFIG, CHECK_CONFIG, COLLISION, ConfigDict
+from earchive.commands.check.config.names import ASCII, BEHAVIOR_CONFIG, CHECK_CONFIG, ConfigDict
 from earchive.commands.check.config.os import CONFIG_OPERATING_SYSTEMS
 from earchive.commands.check.config.substitution import RegexPattern
+from earchive.names import COLLISION
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
 from earchive.utils.path import FastPath

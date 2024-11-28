@@ -802,7 +802,7 @@ wheel = ">=0.36.1"
 name = "typing-extensions"
 version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
@@ -871,4 +871,4 @@ dev = ["mypy", "pre-commit", "pytest", "ruff", "scalene", "vulture", "yelp-gprof
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "0d1e1bb3104a6b3881f8e245b7bcaf8fb16bc7822bbd768f56b7fe9f65432db2"
+content-hash = "dbd984cd01cbb098f55a180af2f32558e40db85486f51a316534e5abf49f5984"

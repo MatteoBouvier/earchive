@@ -2,15 +2,14 @@ import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from earchive.commands.check.check import Counter, rename
 from earchive.commands.check.config import Config, parse_config
 from earchive.commands.check.config.config import CliConfig
+from earchive.commands.check.config.parse import _update_config_from_file  # pyright: ignore[reportPrivateUsage]
 from earchive.commands.check.config.names import (
     ASCII,
     BEHAVIOR_CONFIG,
     CHECK_CHARACTERS_CONFIG,
     CHECK_CONFIG,
-    COLLISION,
     ConfigDict,
 )
 from earchive.commands.check.names import (
@@ -19,10 +18,12 @@ from earchive.commands.check.names import (
     PathEmptyDiagnostic,
     PathErrorDiagnostic,
 )
-from earchive.commands.check.utils import invalid_paths
+from earchive.commands.check.utils import Counter, fix_invalid_paths, invalid_paths
+from earchive.names import COLLISION
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
 from earchive.utils.path import FastPath
+from earchive.utils.progress import NoBar
 from tests.mock_filesystem import FileSystem as fs
 from tests.mock_filesystem import PathMock
 
@@ -49,7 +50,7 @@ cli_cfg = CliConfig.from_dict({"fs": FS.NTFS_win32, "os": OS.WINDOWS})
 
 
 def test_config_should_get_max_path_length():
-    config = parse_config(None, cli_cfg, FastPath.from_str("."), None, None, set())
+    config = parse_config(None, cli_cfg, Path("."), None, None, set())
 
     config.check.max_path_length
 
@@ -58,7 +59,7 @@ def test_should_parse_config_special_characters_extra():
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b'[check.characters]\nextra_invalid = "- "\n')
 
-    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, FastPath.from_str("."), None, None, set())
+    config = parse_config(Path(config_file.name), cli_cfg, Path("."), None, None, set())
 
     assert config.check.characters.extra_invalid.pattern == "- "
 
@@ -69,7 +70,7 @@ def test_should_parse_checks():
     with NamedTemporaryFile(delete=False) as config_file:
         config_file.write(b'[check]\nrun = ["CHARACTERS", "LENGTH"]\n')
 
-    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, FastPath.from_str("."), None, None, set())
+    config = parse_config(Path(config_file.name), cli_cfg, Path("."), None, None, set())
 
     assert config.check.run == Check.CHARACTERS | Check.LENGTH
 
@@ -81,7 +82,10 @@ def test_should_find_empty_directories():
 
     invalids = list(invalid_paths(Config.from_dict(DEFAULT_CONFIG(path)), checks=Check.EMPTY))
 
-    assert invalids == [PathEmptyDiagnostic(FastPath.from_str("/b/d")), PathEmptyDiagnostic(FastPath.from_str("/a"))]
+    assert invalids == [
+        PathEmptyDiagnostic(FastPath.from_str("/b/d", OS.LINUX)),
+        PathEmptyDiagnostic(FastPath.from_str("/a", OS.LINUX)),
+    ]
 
 
 def test_should_convert_permission_denied_error_to_diagnostic():
@@ -91,7 +95,7 @@ def test_should_convert_permission_denied_error_to_diagnostic():
 
     assert len(invalids) == 1
     assert isinstance(invalids[0], PathErrorDiagnostic)
-    assert invalids[0].path == FastPath.from_str("/b")
+    assert invalids[0].path == FastPath.from_str("/b", OS.LINUX)
     assert type(invalids[0].error) is PermissionError
     assert invalids[0].error.filename == "/b"
 
@@ -108,14 +112,16 @@ extra_invalid = "."
 replacement = "_"
 """)
 
-    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, path, None, None, set())
+    config = DEFAULT_CONFIG(path)
+    _update_config_from_file(config, Path(config_file.name))
+    config = Config.from_dict(config)
 
-    diagnostics = list(rename(config, Counter()))
+    diagnostics = list(fix_invalid_paths(config, NoBar, Counter()))
 
     assert len(diagnostics) == 1
     assert isinstance(diagnostics[0], PathCharactersReplaceDiagnostic)
-    assert diagnostics[0].path == FastPath.from_str("/file.path.dots.txt")
-    assert diagnostics[0].new_path == FastPath.from_str("/file_path_dots.txt")
+    assert diagnostics[0].path == FastPath.from_str("/file.path.dots.txt", OS.LINUX)
+    assert diagnostics[0].new_path == FastPath.from_str("/file_path_dots.txt", OS.LINUX)
 
     Path(config_file.name).unlink()
 
@@ -128,13 +134,16 @@ def test_rename_should_avoid_name_collision():
 run = ["CHARACTERS"]
 """)
 
-    config = parse_config(FastPath.from_str(config_file.name), cli_cfg, path, None, None, set())
-    diagnostics = list(rename(config, Counter()))
+    config = DEFAULT_CONFIG(path)
+    _update_config_from_file(config, Path(config_file.name))
+    config = Config.from_dict(config)
+
+    diagnostics = list(fix_invalid_paths(config, NoBar, Counter()))
 
     assert len(diagnostics) == 2
     assert isinstance(diagnostics[0], PathCharactersReplaceDiagnostic)
     assert isinstance(diagnostics[1], PathCharactersReplaceDiagnostic)
-    assert diagnostics[0].path == FastPath.from_str("/b_/c>test.txt")
-    assert diagnostics[0].new_path == FastPath.from_str("/b_/c_test(1).txt")
-    assert diagnostics[1].path == FastPath.from_str("/b?")
-    assert diagnostics[1].new_path == FastPath.from_str("/b_(1)")
+    assert diagnostics[0].path == FastPath.from_str("/b_/c>test.txt", OS.LINUX)
+    assert diagnostics[0].new_path == FastPath.from_str("/b_/c_test(1).txt", OS.LINUX)
+    assert diagnostics[1].path == FastPath.from_str("/b?", OS.LINUX)
+    assert diagnostics[1].new_path == FastPath.from_str("/b_(1)", OS.LINUX)

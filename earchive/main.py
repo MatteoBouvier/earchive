@@ -16,8 +16,6 @@ from earchive.commands.compare import compare as compare_paths
 from earchive.commands.copy import copy_structure
 from earchive.doc import Language
 from earchive.doc.doc import print_doc
-from earchive.utils.os import OS
-from earchive.utils.path import FastPath
 from earchive.utils.tree import Node
 
 app = typer.Typer(
