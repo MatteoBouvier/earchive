@@ -802,7 +802,7 @@ wheel = ">=0.36.1"
 name = "types-psutil"
 version = "6.1.0.20241102"
 description = "Typing stubs for psutil"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "types-psutil-6.1.0.20241102.tar.gz", hash = "sha256:8cbe086b9c29f5c0aa55c4422498c07a8e506f096205761dba088905198551dc"},
@@ -877,10 +877,10 @@ files = [
 ]
 
 [extras]
-ci = ["mypy", "pytest", "ruff", "vulture"]
+ci = ["mypy", "pytest", "ruff", "types-psutil", "vulture"]
 dev = ["pre-commit", "scalene", "yelp-gprof2dot"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "e8120ecc4c2be42c2eb106d1d1225fb2b1ffe6d0ffaba185250b17c49655cca7"
+content-hash = "088f320d50ddd576d872a368e39fffc9a66267c296ce21b7fb864074c5f91d24"
