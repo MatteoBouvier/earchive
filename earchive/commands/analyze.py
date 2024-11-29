@@ -1,5 +1,5 @@
 import os
-import sys
+import platform
 from pathlib import Path
 
 from rich.console import Console
@@ -12,7 +12,7 @@ console = Console()
 
 
 def analyze_path(path: Path) -> None:
-    if sys.platform in ("win32", "cygwin"):
+    if platform.system() == "Windows":
         max_path_length = "260?"
         max_filename_length = "255?"
 
