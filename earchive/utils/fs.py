@@ -15,7 +15,7 @@ class FS(StrEnum):
     @override
     @classmethod
     def _missing_(cls, value: object) -> Self:
-        if value == "ntfs":
+        if str(value).lower() == "ntfs":
             return cls("ntfs_win32")
 
         raise ValueError(f"'{value}' is not  a valid FS")
