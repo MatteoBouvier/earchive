@@ -41,6 +41,9 @@ exclude = [
 ]
 
 [tool.vulture]
+exclude = [
+    "earchive/lib"
+]
 paths = [
     "earchive", 
     "vulture_whitelist.py",
@@ -48,8 +51,7 @@ paths = [
 
 [tool.mypy]
 exclude = [
-    "tests",
-    "vulture_whitelist.py",
+    "earchive/lib"
 ]
 
 [tool.pyright]

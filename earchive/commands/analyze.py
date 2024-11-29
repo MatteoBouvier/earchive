@@ -12,9 +12,17 @@ console = Console()
 
 
 def analyze_path(path: Path) -> None:
+    if sys.platform in ("win32", "cygwin"):
+        max_path_length = "260?"
+        max_filename_length = "255?"
+
+    else:
+        max_path_length = str(os.pathconf(path, "PC_PATH_MAX"))
+        max_filename_length = str(os.pathconf(path, "PC_NAME_MAX"))
+
     attributes = dict(
-        max_path_length="260?" if sys.platform == "win32" else os.pathconf(path, "PC_PATH_MAX"),
-        max_filename_length="255?" if sys.platform == "win32" else os.pathconf(path, "PC_NAME_MAX"),
+        max_path_length=max_path_length,
+        max_filename_length=max_filename_length,
         file_system=get_file_system(path),
         operating_system=get_operating_system(path),
     )

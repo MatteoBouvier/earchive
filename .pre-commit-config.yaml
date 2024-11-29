@@ -7,33 +7,34 @@ repos:
       - id: ruff
       - id: ruff-format
 
-  # - repo: https://github.com/jendrikseipp/vulture
-  #   rev: v2.7
-  #   hooks:
-  #     - id: vulture
-  #       types: [python]
-  #       pass_filenames: false
-  #       require_serial: true
-  #
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       args: [--strict, '.']
-  #       language_version: python3.12
-  #       pass_filenames: false
-  #       additional_dependencies: [
-  #         'natsort',
-  #         'rich',
-  #         'typer',
-  #       ]
-  #
-  # - repo: local
-  #   hooks:
-  #     - id: pytest
-  #       name: pytest
-  #       entry: pytest
-  #       language: system
-  #       pass_filenames: false
-  #       always_run: true
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.7
+    hooks:
+      - id: vulture
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [--strict]
+        language_version: python3.12
+        additional_dependencies: [
+          'natsort',
+          'rich',
+          'click',
+          'types-psutil',
+          'typing-extensions'
+        ]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
     
