@@ -162,10 +162,13 @@ class FastPath(os.PathLike[str]):
 
     def as_str(self) -> str:
         if not len(self.segments):
-            return "/" if self._absolute else "."
+            repr_ = "/" if self._absolute else "."
 
-        repr_ = "/".join(self.segments)
-        return "/" + repr_ if self._absolute else "./" + repr_
+        else:
+            repr_ = "/".join(self.segments)
+            repr_ = "/" + repr_ if self._absolute else "./" + repr_
+
+        return self.drive + repr_
 
     def walk(
         self, top_down: bool = True, on_error: Callable[[OSError], None] | None = None, follow_symlinks: bool = False
