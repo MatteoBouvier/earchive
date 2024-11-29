@@ -17,8 +17,8 @@ def analyze_path(path: Path) -> None:
         max_filename_length = "255?"
 
     else:
-        max_path_length = str(os.pathconf(path, "PC_PATH_MAX"))
-        max_filename_length = str(os.pathconf(path, "PC_NAME_MAX"))
+        max_path_length = str(os.pathconf(path, "PC_PATH_MAX"))  # type: ignore[attr-defined,unused-ignore]
+        max_filename_length = str(os.pathconf(path, "PC_NAME_MAX"))  # type: ignore[attr-defined,unused-ignore]
 
     attributes = dict(
         max_path_length=max_path_length,
