@@ -18,7 +18,7 @@ class FS(StrEnum):
         if value == "ntfs":
             return cls("ntfs_win32")
 
-        return super()._missing_(value)
+        raise ValueError(f"'{value}' is not  a valid FS")
 
 
 def get_file_system(path: Path) -> FS:

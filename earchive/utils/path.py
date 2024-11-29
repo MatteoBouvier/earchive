@@ -51,10 +51,10 @@ class FastPath(os.PathLike[str]):
             return FastPath(absolute=False, platform=platform, drive="")
 
         if path.is_absolute():
-            return FastPath(*cast(list[str], path._tail), absolute=True, platform=platform, drive=path.drive)  # pyright: ignore[reportAttributeAccessIssue]
+            return FastPath(*cast(list[str], path._tail), absolute=True, platform=platform, drive=path.drive)  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue]
 
         else:
-            return FastPath(*cast(list[str], path._tail), absolute=True, platform=platform, drive="")  # pyright: ignore[reportAttributeAccessIssue]
+            return FastPath(*cast(list[str], path._tail), absolute=True, platform=platform, drive="")  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue]
 
     @staticmethod
     def get_segments(path: str) -> list[str]:
@@ -65,7 +65,7 @@ class FastPath(os.PathLike[str]):
 
     @override
     def __repr__(self) -> str:
-        return self.str()
+        return self.as_str()
 
     @override
     def __eq__(self, value: object, /) -> bool:
@@ -101,7 +101,7 @@ class FastPath(os.PathLike[str]):
 
     @override
     def __fspath__(self) -> str:
-        return self.str()
+        return self.as_str()
 
     @property
     def parent(self) -> FastPath:
@@ -119,7 +119,7 @@ class FastPath(os.PathLike[str]):
     @property
     def name(self) -> str:
         if not len(self.segments):
-            return self.str()
+            return self.as_str()
         return self.segments[-1]
 
     @property
@@ -160,7 +160,7 @@ class FastPath(os.PathLike[str]):
     def is_absolute(self) -> bool:
         return self._absolute
 
-    def str(self) -> str:
+    def as_str(self) -> str:
         if not len(self.segments):
             return "/" if self._absolute else "."
 

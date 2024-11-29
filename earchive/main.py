@@ -1,12 +1,14 @@
 # pyright: reportDeprecated=false
 
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Optional, final, override
 from importlib import metadata
 
 import click
 
+from earchive.commands.repair import fix_last_modified_timestamp
 import earchive.errors as err
 import earchive.lib.typer as typer
 from earchive.commands.analyze import analyze_path
@@ -219,6 +221,23 @@ def copy(
         dst.mkdir(parents=True)
 
     copy_structure(src, dst)
+
+
+@app.command()
+def repair(
+    path: Annotated[
+        Path, typer.Argument(exists=True, readable=True, resolve_path=True, help="Path for which to fix timestamps")
+    ],
+    reference_path: Annotated[
+        Path | None,
+        typer.Argument(exists=True, readable=True, resolve_path=True, help="Reference path to get valid timestamps"),
+    ] = None,
+    fix_under: Annotated[
+        str, typer.Option(help="Fix creation timestamp before a date (uses last modification)")
+    ] = "31/12/1979 23:00:00",
+) -> None:
+    date = datetime.strptime(fix_under, "%d/%m/%Y %H:%M:%S")
+    fix_last_modified_timestamp(path, reference_path, date.timestamp())
 
 
 @app.callback(invoke_without_command=True)

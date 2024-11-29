@@ -1,7 +1,6 @@
 from enum import StrEnum, auto
 from typing import final
 
-from rich.console import Console
 from rich.highlighter import RegexHighlighter
 from rich.text import Text
 from rich.theme import Theme
@@ -20,8 +19,6 @@ class DocHighlighter(RegexHighlighter):
 
 doc_theme = Theme({"doc.option": "bold green1", "doc.code_block": "italic cyan", "doc.argument": "underline"})
 doc_highlighter = DocHighlighter()
-
-_console = Console(theme=doc_theme)
 
 
 def SectionBody(header: Text, *body: Text) -> Text:

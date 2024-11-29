@@ -81,7 +81,7 @@ class TomlEncoder:
 
         return str(value).replace("e+0", "e+").replace("e-0", "e-")
 
-    def _dump_time(self, value: datetime.time):
+    def _dump_time(self, value: datetime.time) -> str:
         utcoffset = value.utcoffset()
         if utcoffset is None:
             return value.isoformat()

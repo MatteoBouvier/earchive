@@ -29,7 +29,7 @@ def parse_pattern(rhs: str, lhs: Any) -> RegexPattern:
     elif isinstance(lhs, dict):
         lhs = cast(dict[str, str | bool], lhs)
         try:
-            replacement = as_str(lhs["replacement"], f"rename ({rhs}, replacement)")
+            replacement = as_str(str(lhs["replacement"]), f"rename ({rhs}, replacement)")
         except KeyError:
             raise err.parse_pattern_no_replacement(rhs)
 
@@ -58,7 +58,7 @@ def _destructure(data: dict[Any, Any], root_header: HEADER = HEADER.NO_HEADER) -
             raise err.parse_invalid_section_name(header)
 
         if isinstance(content, dict):
-            elements.extend(_destructure(cast(dict[Any, Any], content), full_header))
+            elements.extend(_destructure(content, full_header))  # pyright: ignore[reportUnknownArgumentType]
 
         else:
             elements.append((full_header, content))

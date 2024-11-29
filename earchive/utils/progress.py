@@ -48,6 +48,7 @@ class Bar:
         return self
 
     def __exit__(self, exc_type: type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:
+        del exc_type, exc_value, traceback
         self.clear()
 
     def __call__[T](self, iterable: Iterable[T]) -> Generator[T, None, None]:
@@ -84,7 +85,7 @@ class Bar:
         if self.total is not None and self.percent:
             counter_pre = f"{self.counter * self.multiplier / self.total * 100:.2f}"
         else:
-            counter_pre = self.counter * self.multiplier
+            counter_pre = str(self.counter * self.multiplier)
 
         s = f"{next(self.animation_frames)} {counter_pre}{self.counter_post} {self.description}"
 

@@ -15,7 +15,7 @@ class OS(StrEnum):
         if value == "win32":
             return cls("windows")
 
-        return super()._missing_(value)
+        raise ValueError(f"'{value}' is not a valid OS")
 
 
 def get_operating_system(path: Path) -> OS:

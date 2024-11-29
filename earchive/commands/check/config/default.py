@@ -6,10 +6,10 @@ from earchive.commands.check.config.names import (
     BEHAVIOR_CONFIG,
     CHECK_CHARACTERS_CONFIG,
     CHECK_CONFIG,
-    COLLISION,
     ConfigDict,
 )
 from earchive.commands.check.names import Check
+from earchive.names import COLLISION
 from earchive.utils.fs import FS
 from earchive.utils.os import OS
 from earchive.utils.path import FastPath

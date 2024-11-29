@@ -3,13 +3,13 @@ from earchive.utils.path import FastPath
 
 
 def test_fastpath_root():
-    assert FastPath.from_str("/", OS.LINUX).str() == "/"
+    assert FastPath.from_str("/", OS.LINUX).as_str() == "/"
 
 
 def test_fastpath_cwd():
-    assert FastPath(absolute=False, platform=OS.LINUX, drive="").str() == "."
-    assert FastPath.from_str(".", platform=OS.LINUX).str() == "."
-    assert FastPath.from_str("./", platform=OS.LINUX).str() == "."
+    assert FastPath(absolute=False, platform=OS.LINUX, drive="").as_str() == "."
+    assert FastPath.from_str(".", platform=OS.LINUX).as_str() == "."
+    assert FastPath.from_str("./", platform=OS.LINUX).as_str() == "."
 
 
 def test_fastpath_parents_abs():

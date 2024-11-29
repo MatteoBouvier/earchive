@@ -35,7 +35,8 @@ class MultiPattern:
             match
             for pattern in self.patterns
             for match in pattern.finditer(string, pos, endpos)
-            if (span := match.span()) not in seen and (seen.add(span) or True)  # get only unique matches
+            # get only unique matches
+            if (span := match.span()) not in seen and (seen.add(span) or True)  # type: ignore[func-returns-value]
         ]
 
     def match(self, string: str, pos: int = 0, endpos: int = sys.maxsize) -> re.Match[str] | None:

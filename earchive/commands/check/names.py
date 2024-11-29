@@ -20,7 +20,7 @@ class OutputKind(StrEnum):
     csv = auto()
 
     def __init__(self, _: object) -> None:
-        self.path_ = None
+        self.path_: str | None = None
         super().__init__()
 
     @classmethod
@@ -30,7 +30,8 @@ class OutputKind(StrEnum):
             kind = cls("csv")
             kind.path_ = value[4:]
             return kind
-        return super()._missing_(value)
+
+        raise ValueError(f"'{value}' is not a valid OutputKind")
 
 
 class Check(IntFlag):
@@ -41,12 +42,12 @@ class Check(IntFlag):
 
     @classmethod
     @override
-    def _missing_(cls, value: object) -> Self:
+    def _missing_(cls, value: object) -> Check:
         if isinstance(value, str):
             try:
                 return cls.__members__[value.upper()]
             except KeyError:
-                return super()._missing_(value)
+                raise ValueError(f"'{value}' is not a valid Check")
 
         elif isinstance(value, list):
             value = cast(list[str], value)
@@ -58,7 +59,7 @@ class Check(IntFlag):
 
             return chk
 
-        return super()._missing_(value)
+        return cast(Self, super()._missing_(value))
 
 
 CheckRepr = {Check.EMPTY: "Empty directories", Check.CHARACTERS: "Invalid characters", Check.LENGTH: "Path length"}

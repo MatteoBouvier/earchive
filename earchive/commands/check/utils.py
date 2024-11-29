@@ -113,7 +113,9 @@ def _rename_if_match(file_path: FastPath, config: Config) -> PathDiagnostic | No
             return PathRenameDiagnostic(file_path, new_path, patterns=matched_patterns)
 
         else:
-            return PathErrorDiagnostic(file_path, error=err.cannot_overwrite(file_path.str()))
+            return PathErrorDiagnostic(file_path, error=err.cannot_overwrite(file_path.as_str()))
+
+    return None
 
 
 def _fix_invalid_file(

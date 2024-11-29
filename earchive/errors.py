@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from sys import stderr
 from types import TracebackType
-from typing import Any, Never, final, overload, override
+from typing import Any, Never, cast, final, overload, override
 
 from rich import print as rprint
 from rich.text import Text
@@ -113,7 +113,7 @@ def option_cannot_infer(opt: SupportsFormat) -> ValueError:
     return ValueError(OPTION_CANNOT_INFER, f"Cannot auto infer value for option '{opt}'")
 
 
-def option_invalid_name(option: str):
+def option_invalid_name(option: str) -> ParseError:
     OPTION_INVALID_NAME = 53
     return ParseError(OPTION_INVALID_NAME, f"No such option: '{option}'")
 
@@ -186,13 +186,13 @@ class AllIsType(AssertTest):
 
 @final
 class IsGreater(AssertTest):
-    def __init__(self, opt: str, value: Any, min: int) -> None:
+    def __init__(self, opt: str, value: float | int, min: float | int) -> None:
         super().__init__(opt, value)
         self.min = min
 
     @override
     def __call__(self) -> bool:
-        return self.value >= self.min
+        return cast(float | int, self.value) >= self.min
 
     @property
     @override

@@ -136,6 +136,8 @@ class Grid:
         return txt, len(txt)
 
     def _cli_repr(self) -> RenderResult:
+        repr_above: str | Text
+
         for row in self.rows:
             match row:
                 case PathCharactersReplaceDiagnostic(FastPath() as path, FastPath() as new_path, matches=list(matches)):
@@ -256,7 +258,7 @@ class Grid:
                 progress: Bar = Bar(description="saving ...", multiplier=100, total=len(self.rows), percent=True)
                 with open(self.kind.path_, mode="w") as file:
                     for lines in progress(it.batched(self._csv_repr(), n=100)):
-                        file.writelines("%s\n" % line for line in lines)
+                        file.writelines((f"{line}\n" for line in lines))
 
         else:
             return
