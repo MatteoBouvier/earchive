@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "earchive"
-version = "0.2.2"
+version = "0.3.0"
 description = "Set of tools for electronic archivists"
 authors = ["Matteo Bouvier <matteo.bouvier@hotmail.fr>"]
 readme = "README.md"
