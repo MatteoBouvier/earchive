@@ -7,3 +7,8 @@ test/
 test_ref/
 dist/
 *.vim
+
+
+# Added by cargo
+
+/target
