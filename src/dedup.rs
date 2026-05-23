@@ -66,7 +66,7 @@ impl Hasher {
 }
 
 pub fn deduplicate(dir_1: &PathBuf, dir_2: &PathBuf, n_threads: u8) -> crate::Result<()> {
-    let progress = Arc::new(Mutex::new(ProgressBar::new(Box::new(CLIRenderer::new(10)))));
+    let progress = Arc::new(Mutex::new(ProgressBar::new(Box::new(CLIRenderer::new()))));
 
     let (tx, rx) = crossbeam_channel::unbounded::<Job>();
     let (tx2, rx2) = crossbeam_channel::unbounded::<Job>();

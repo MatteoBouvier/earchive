@@ -1,50 +1,36 @@
+mod cli;
+
+use std::time::Duration;
+
+pub(crate) use cli::CLIRenderer;
+
 pub(crate) trait Renderer {
-    fn render(&self, count: usize, total: usize);
+    fn render(&self, count: usize, total: usize, elapsed: Duration, remaining: Duration);
     fn terminate(&self, count: usize);
 }
 
-pub(crate) struct CLIRenderer {
-    len: usize,
-}
+const SECOND: Duration = Duration::from_secs(1);
+const MINUTE: Duration = Duration::from_mins(1);
+const HOUR: Duration = Duration::from_hours(1);
 
-impl CLIRenderer {
-    const CLEAR: &'static str = "\x1b[0G\x1b[0J";
-
-    pub fn new(len: usize) -> Self {
-        Self { len: len }
-    }
-
-    fn print(&self, msg: &str) {
-        let clear = CLIRenderer::CLEAR;
-        eprint!("{clear}");
-
-        eprint!("{msg}");
-    }
-}
-
-impl Renderer for CLIRenderer {
-    fn render(&self, count: usize, total: usize) {
-        match (count, total) {
-            (0, 0) => {
-                let text = " ??".repeat(self.len.div_ceil(3))[..self.len].to_string();
-                self.print(&format!("[{text}] 0/0"));
-            }
-            (_, 0) => self.print(&format!("[{}] {}/0", " ".repeat(self.len), count)),
-            (0, _) => self.print(&format!("[{}] 0/{}", " ".repeat(self.len), total)),
-            _ => {
-                let progress = count.div_ceil(total) * self.len;
-                self.print(&format!(
-                    "[{}{}] {}/{}",
-                    "#".repeat(progress),
-                    " ".repeat(self.len - progress),
-                    count,
-                    total
-                ));
-            }
-        }
-    }
-
-    fn terminate(&self, count: usize) {
-        self.print(&format!("Done (analyzed {} files)\n", count));
+fn format_duration(duration: Duration) -> String {
+    if duration < SECOND {
+        "0s".to_owned()
+    } else if duration < MINUTE {
+        format!("{}s", duration.as_secs())
+    } else if duration < HOUR {
+        let secs = duration.as_secs();
+        let mins = secs / 60;
+        format!("{:02}:{:02}", mins, secs - mins * 60)
+    } else {
+        let secs = duration.as_secs();
+        let hours = secs / 3600;
+        let mins = (secs - hours * 3600) / 60;
+        format!(
+            "{:02}:{:02}:{:02}",
+            hours,
+            mins,
+            secs - hours * 3600 - mins * 60
+        )
     }
 }
