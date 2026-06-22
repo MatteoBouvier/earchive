@@ -1,5 +1,6 @@
 pub mod dedup;
 pub mod progress;
+pub mod ui;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

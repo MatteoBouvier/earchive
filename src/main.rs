@@ -40,6 +40,9 @@ fn main() {
         }
     };
 
+    use earchive::ui;
+    ui::main();
+
     match deduplicate(&dir_1, &dir_2, cli.n_threads) {
         Ok(_) => std::process::exit(0),
         Err(e) => {

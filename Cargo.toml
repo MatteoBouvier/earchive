@@ -6,6 +6,12 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 crossbeam-channel = "0.5.15"
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui_platform = {
+  git = "https://github.com/zed-industries/zed",
+  features = ["wayland"]
+}
 termsize = "0.1.9"
+unicode-segmentation = "1.13.2"
 walkdir = "2.5.0"
 xxhash-rust = { version = "0.8.15", features = ["xxh3"] }
