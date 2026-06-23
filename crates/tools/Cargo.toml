@@ -1,0 +1,13 @@
+[package]
+name = "tools"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+
+[dependencies]
+crossbeam-channel = "0.5.15"
+termsize = "0.1.9"
+unicode-segmentation = "1.13.2"
+walkdir = "2.5.0"
+xxhash-rust = { version = "0.8.15", features = ["xxh3"] }

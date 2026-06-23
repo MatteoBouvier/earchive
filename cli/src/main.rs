@@ -4,12 +4,12 @@ use std::{
 };
 
 use clap::Parser;
-use earchive::dedup::deduplicate;
+use tools::dedup::deduplicate;
 
 #[derive(Parser)]
 #[command(name = "earchive")]
 #[command(version = "0.1")]
-#[command(about="Tools for electronic archives", long_about=None)]
+#[command(about="Set of tools for working with digital archives", long_about=None)]
 struct Cli {
     /// first directory to compare
     dir_1: PathBuf,
@@ -39,9 +39,6 @@ fn main() {
             std::process::exit(1);
         }
     };
-
-    use earchive::ui;
-    ui::main();
 
     match deduplicate(&dir_1, &dir_2, cli.n_threads) {
         Ok(_) => std::process::exit(0),

@@ -1,0 +1,15 @@
+[package]
+name = "desktop"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "darchive"
+path = "src/main.rs"
+
+[dependencies]
+ui = { path = "../crates/ui" }
+
+gpui.workspace = true
+gpui_platform.workspace = true
